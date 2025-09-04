@@ -1,0 +1,276 @@
+// src/server.ts
+import express from 'express';
+import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import connectDB from './db';
+import { UserModel, IUser } from './models/User';
+import { OrderModel, IOrder } from './models/Order';
+import multer from 'multer'; // Para lidar com upload de arquivos
+import path from 'path'; // Para lidar com caminhos de arquivos
+
+const app = express();
+const port = 3001;
+const JWT_SECRET = 'sua_senha_secreta_aqui';
+
+// Conectar ao banco de dados
+connectDB();
+
+// Configurar o Multer para o upload de arquivos
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/'); // Salva os arquivos na pasta 'uploads'
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    },
+});
+const upload = multer({ storage });
+
+// Servir a pasta de uploads estaticamente para que as imagens fiquem acessíveis
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Middlewares
+app.use(express.json());
+app.use(cors());
+
+// Interfaces e Middlewares de autenticação
+interface AuthenticatedRequest extends express.Request {
+    userData?: { userId: string; role: 'admin' | 'motorista' };
+}
+
+const authenticateToken = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ message: 'Autenticação falhou. Token ausente.' });
+        }
+        const decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: 'admin' | 'motorista' };
+        req.userData = { userId: decodedToken.userId, role: decodedToken.role };
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: 'Autenticação falhou. Token inválido.' });
+    }
+};
+
+const isAdmin = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    if (!req.userData || req.userData.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem realizar esta ação.' });
+    }
+    next();
+};
+
+const isDriver = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+    if (!req.userData || req.userData.role !== 'motorista') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas motoristas podem realizar esta ação.' });
+    }
+    next();
+};
+
+// ==========================================================
+// ROTA DE LOGIN
+// ==========================================================
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = await UserModel.findOne({ username });
+        if (!user || user.password !== password) {
+            return res.status(401).json({ message: 'Credenciais inválidas.' });
+        }
+        const token = jwt.sign(
+            { userId: user._id, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+        return res.status(200).json({ message: 'Login bem-sucedido!', token, role: user.role });
+    } catch (error) {
+        console.error('Erro no login:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// ==========================================================
+// ROTAS DE GERENCIAMENTO DE PEDIDOS (ADMIN)
+// ==========================================================
+
+// Criar um novo pedido
+app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest, res) => {
+    const { clientName, contactName, contactNumber, neighborhood, address, addressNumber, type, motorista, priority } = req.body;
+    try {
+        const newOrder = new OrderModel({
+            clientName,
+            contactName,
+            contactNumber,
+            neighborhood,
+            address,
+            addressNumber,
+            type,
+            motorista: motorista || null,
+            priority: priority || 0
+        });
+        await newOrder.save();
+        return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
+    } catch (error) {
+        console.error('Erro ao criar pedido:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Obter todos os pedidos (com info do motorista)
+app.get('/orders', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const orders = await OrderModel.find().populate({
+            path: 'motorista',
+            select: 'username'
+        }).sort({ priority: -1, createdAt: 1 });
+        return res.status(200).json(orders);
+    } catch (error) {
+        console.error('Erro ao buscar pedidos:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Atualizar um pedido
+app.patch('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+    try {
+        const updatedOrder = await OrderModel.findByIdAndUpdate(id, { ...updates, updatedAt: Date.now() }, { new: true });
+        if (!updatedOrder) {
+            return res.status(404).json({ message: 'Pedido não encontrado.' });
+        }
+        return res.status(200).json({ message: 'Pedido atualizado com sucesso!', order: updatedOrder });
+    } catch (error) {
+        console.error('Erro ao atualizar pedido:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Excluir um pedido
+app.delete('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const deletedOrder = await OrderModel.findByIdAndDelete(id);
+        if (!deletedOrder) {
+            return res.status(404).json({ message: 'Pedido não encontrado.' });
+        }
+        return res.status(200).json({ message: 'Pedido excluído com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao excluir pedido:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// ==========================================================
+// ROTAS DE GERENCIAMENTO DE MOTORISTAS (ADMIN)
+// ==========================================================
+// Criar um novo motorista
+app.post('/drivers', authenticateToken, isAdmin, async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const existingUser = await UserModel.findOne({ username });
+        if (existingUser) {
+            return res.status(409).json({ message: 'Usuário já existe.' });
+        }
+        const newDriver = new UserModel({
+            username,
+            password,
+            role: 'motorista'
+        });
+        await newDriver.save();
+        return res.status(201).json({ message: 'Motorista cadastrado com sucesso!', driver: { id: newDriver._id, username: newDriver.username } });
+    } catch (error) {
+        console.error('Erro ao cadastrar motorista:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Obter todos os motoristas
+app.get('/drivers', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const drivers = await UserModel.find({ role: 'motorista' }).select('-password');
+        return res.status(200).json(drivers);
+    } catch (error) {
+        console.error('Erro ao buscar motoristas:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Atualizar um motorista
+app.patch('/drivers/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { username, password } = req.body;
+    const updates: Partial<IUser> = {};
+    if (username) updates.username = username;
+    if (password) updates.password = password;
+
+    try {
+        const updatedDriver = await UserModel.findByIdAndUpdate(id, updates, { new: true }).select('-password');
+        if (!updatedDriver) {
+            return res.status(404).json({ message: 'Motorista não encontrado.' });
+        }
+        return res.status(200).json({ message: 'Motorista atualizado com sucesso!', driver: { id: updatedDriver._id, username: updatedDriver.username } });
+    } catch (error) {
+        console.error('Erro ao atualizar motorista:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Excluir um motorista
+app.delete('/drivers/:id', authenticateToken, isAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const deletedDriver = await UserModel.findByIdAndDelete(id);
+        if (!deletedDriver) {
+            return res.status(404).json({ message: 'Motorista não encontrado.' });
+        }
+        return res.status(200).json({ message: 'Motorista excluído com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao excluir motorista:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// ==========================================================
+// ROTAS DO MOTORISTA
+// ==========================================================
+// Obter pedidos do motorista logado
+app.get('/driver/orders', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
+    try {
+        const orders = await OrderModel.find({ motorista: req.userData?.userId }).sort({ priority: -1, createdAt: 1 });
+        return res.status(200).json(orders);
+    } catch (error) {
+        console.error('Erro ao buscar pedidos do motorista:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Atualizar status e anexar fotos
+app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, upload.array('photos', 5), async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const files = req.files as Express.Multer.File[];
+    
+    // Verifique se o pedido pertence ao motorista logado
+    const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
+    if (!order) {
+        return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+    }
+
+    const imageUrls = files.map(file => `/uploads/${file.filename}`);
+
+    try {
+        const updatedOrder = await OrderModel.findByIdAndUpdate(
+            id,
+            { status: 'concluido', imageUrls, updatedAt: Date.now() },
+            { new: true }
+        );
+        return res.status(200).json({ message: 'Pedido concluído e fotos anexadas com sucesso!', order: updatedOrder });
+    } catch (error) {
+        console.error('Erro ao concluir pedido:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Iniciar o servidor
+app.listen(port, () => {
+    console.log(`Servidor rodando em http://localhost:${port}`);
+});

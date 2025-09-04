@@ -1,0 +1,518 @@
+import React, { useState, useEffect, FormEvent } from 'react';
+import styled from 'styled-components';
+import type { IDriver, IOrder } from '../interfaces/index';
+import CreateOrderModal from '../components/CreateOrderModal';
+import CreateDriverModal from '../components/CreateDriverModal';
+
+// ==========================================================
+// ESTILOS
+// ==========================================================
+const AdminContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+  padding: 1rem;
+  font-family: Arial, sans-serif;
+
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+`;
+
+const Header = styled.header`
+  background-color: #3b82f6;
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  h1 {
+    font-size: 1.8rem;
+    margin: 0;
+    @media (min-width: 768px) {
+      font-size: 2.5rem;
+    }
+  }
+`;
+
+const TabContainer = styled.div`
+  display: flex;
+  justify-content: flex-start;
+  border-bottom: 2px solid #ddd;
+  margin-bottom: 1.5rem;
+`;
+
+const Tab = styled.button<{ active: boolean }>`
+  background-color: ${({ active }) => (active ? '#3b82f6' : 'transparent')};
+  color: ${({ active }) => (active ? 'white' : '#555')};
+  border: none;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
+  border-radius: 8px 8px 0 0;
+  &:hover {
+    background-color: ${({ active }) => (active ? '#2563eb' : '#eee')};
+  }
+`;
+
+const ContentContainer = styled.div`
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0 8px 8px 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const Button = styled.button`
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #2563eb;
+  }
+  &:disabled {
+    background-color: #9bd3ff;
+    cursor: not-allowed;
+  }
+`;
+
+const OrdersGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+`;
+
+const OrderCard = styled.div<{ status: IOrder['status'] }>`
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-left: 5px solid ${({ status }) => 
+    status === 'pendente' ? '#f59e0b' :
+    status === 'em_andamento' ? '#3b82f6' :
+    status === 'concluido' ? '#10b981' :
+    '#ef4444'
+  };
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #333;
+    font-size: 1.1rem;
+  }
+  p {
+    margin: 0.3rem 0;
+    font-size: 0.9rem;
+    color: #666;
+  }
+  strong {
+    color: #333;
+  }
+`;
+
+const DriverList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+`;
+
+const DriverItem = styled.li`
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  span {
+    font-weight: bold;
+    color: #333;
+  }
+
+  div {
+    display: flex;
+    gap: 0.5rem;
+  }
+`;
+
+const IconButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3b82f6; // Azul
+  font-size: 1rem;
+  &:hover {
+    color: #2563eb;
+  }
+  &.delete {
+    color: #ef4444; // Vermelho
+    &:hover {
+      color: #b91c1c;
+    }
+  }
+`;
+
+const ImageContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 1rem;
+`;
+
+const OrderImage = styled.img`
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+`;
+
+// ==========================================================
+// COMPONENTE PRINCIPAL
+// ==========================================================
+const AdminPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'pedidos' | 'motoristas'>('pedidos');
+  const [orders, setOrders] = useState<IOrder[]>([]);
+  const [drivers, setDrivers] = useState<IDriver[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Estados para os modais
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<IDriver | null>(null);
+
+  // Função auxiliar para fazer requisições autenticadas
+  const authenticatedFetch = async (url: string, options?: RequestInit) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Sessão expirada. Por favor, faça login novamente.');
+      window.location.href = '/';
+      throw new Error('Token not found');
+    }
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options?.headers,
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401 || response.status === 403) {
+      alert('Acesso negado ou sessão inválida. Faça login novamente.');
+      localStorage.removeItem('token');
+      window.location.href = '/';
+      throw new Error('Authentication failed');
+    }
+    return response;
+  };
+
+  // Carregar pedidos e motoristas
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const ordersResponse = await authenticatedFetch('http://localhost:3001/orders');
+      const ordersData = await ordersResponse.json();
+      setOrders(ordersData);
+
+      const driversResponse = await authenticatedFetch('http://localhost:3001/drivers');
+      const driversData = await driversResponse.json();
+      setDrivers(driversData);
+
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Ocorreu um erro desconhecido ao carregar os dados.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Funções de Gerenciamento de Pedidos
+  const handleUpdateOrder = async (orderId: string, updates: Partial<IOrder>) => {
+    try {
+      const response = await authenticatedFetch(`http://localhost:3001/orders/${orderId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Pedido atualizado!');
+        fetchData();
+      } else {
+        alert(data.message || 'Erro ao atualizar pedido.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao atualizar pedido.');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este pedido?')) return;
+    try {
+      const response = await authenticatedFetch(`http://localhost:3001/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        alert('Pedido excluído com sucesso!');
+        fetchData();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Erro ao excluir pedido.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao excluir pedido.');
+    }
+  };
+
+  // Funções para prioridade
+  const handleIncreasePriority = (orderId: string, currentPriority: number) => {
+    handleUpdateOrder(orderId, { priority: currentPriority + 1 });
+  };
+
+  const handleDecreasePriority = (orderId: string, currentPriority: number) => {
+    handleUpdateOrder(orderId, { priority: Math.max(0, currentPriority - 1) });
+  };
+
+  // Funções de Gerenciamento de Motoristas
+  const handleEditDriver = (driver: IDriver) => {
+    setEditingDriver(driver);
+    setIsDriverModalOpen(true);
+  };
+
+  const handleDeleteDriver = async (driverId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este motorista? Todos os pedidos associados precisarão ser reatribuídos.')) return;
+    try {
+      const response = await authenticatedFetch(`http://localhost:3001/drivers/${driverId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        alert('Motorista excluído com sucesso!');
+        fetchData();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Erro ao excluir motorista.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao excluir motorista.');
+    }
+  };
+
+  // Agrupa pedidos por motorista
+  const ordersByDriver = drivers.reduce((acc, driver) => {
+    acc[driver._id] = orders.filter(order => order.motorista?._id === driver._id);
+    return acc;
+  }, {} as Record<string, IOrder[]>);
+
+  const unassignedOrders = orders.filter(order => !order.motorista);
+
+  if (loading) return <AdminContainer>Carregando...</AdminContainer>;
+  if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
+
+  return (
+    <AdminContainer>
+      <Header>
+        <h1>Painel de Administração de Caçambas</h1>
+      </Header>
+
+      <TabContainer>
+        <Tab active={activeTab === 'pedidos'} onClick={() => setActiveTab('pedidos')}>
+          Pedidos
+        </Tab>
+        <Tab active={activeTab === 'motoristas'} onClick={() => setActiveTab('motoristas')}>
+          Motoristas
+        </Tab>
+      </TabContainer>
+
+      <ContentContainer>
+        {activeTab === 'pedidos' && (
+          <div>
+            <ActionButtons>
+              <Button onClick={() => setIsOrderModalOpen(true)}>+ Adicionar Pedido</Button>
+            </ActionButtons>
+
+            {/* Pedidos Não Atribuídos */}
+            <div style={{ marginBottom: '2rem' }}>
+              <h2>Pedidos Não Atribuídos</h2>
+              {unassignedOrders.length > 0 ? (
+                <OrdersGrid>
+                  {unassignedOrders.map(order => (
+                    <OrderCard key={order._id} status={order.status}>
+                      <h3>{order.clientName} ({order.type})</h3>
+                      <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                      <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                      <p><strong>Status:</strong> {order.status}</p>
+                      <p><strong>Prioridade:</strong> {order.priority}</p>
+                      {order.imageUrls && order.imageUrls.length > 0 && (
+                        <div>
+                          <h4>Imagens Anexadas:</h4>
+                          <ImageContainer>
+                            {order.imageUrls.map((url, index) => (
+                              <OrderImage key={index} src={`http://localhost:3001${url}`} alt={`Imagem ${index + 1}`} />
+                            ))}
+                          </ImageContainer>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+                        <Button onClick={() => handleIncreasePriority(order._id, order.priority)} style={{ backgroundColor: '#10b981', padding: '0.5rem' }}>▲ Prioridade</Button>
+                        <Button onClick={() => handleDecreasePriority(order._id, order.priority)} style={{ backgroundColor: '#f59e0b', padding: '0.5rem' }}>▼ Prioridade</Button>
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
+                          style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                        >
+                          <option value="pendente">Pendente</option>
+                          <option value="em_andamento">Em Andamento</option>
+                          <option value="concluido">Concluído</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                        <select
+                          value={order.motorista?._id || ''}
+                          onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
+                          style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                        >
+                          <option value="">Atribuir</option>
+                          {drivers.map(d => (
+                            <option key={d._id} value={d._id}>{d.username}</option>
+                          ))}
+                        </select>
+                        <Button className="delete" onClick={() => handleDeleteOrder(order._id)} style={{ backgroundColor: '#ef4444', padding: '0.5rem' }}>Excluir</Button>
+                      </div>
+                    </OrderCard>
+                  ))}
+                </OrdersGrid>
+              ) : (
+                <p>Nenhum pedido não atribuído.</p>
+              )}
+            </div>
+            
+            {/* Pedidos por Motorista */}
+            {drivers.map(driver => (
+              <div key={driver._id} style={{ marginBottom: '2rem' }}>
+                <h2>Pedidos do Motorista: {driver.username}</h2>
+                {ordersByDriver[driver._id]?.length > 0 ? (
+                  <OrdersGrid>
+                    {ordersByDriver[driver._id].map(order => (
+                      <OrderCard key={order._id} status={order.status}>
+                        <h3>{order.clientName} ({order.type})</h3>
+                        <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                        <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                        <p><strong>Status:</strong> {order.status}</p>
+                        <p><strong>Prioridade:</strong> {order.priority}</p>
+                        {order.imageUrls && order.imageUrls.length > 0 && (
+                          <div>
+                            <h4>Imagens Anexadas:</h4>
+                            <ImageContainer>
+                              {order.imageUrls.map((url, index) => (
+                                <OrderImage key={index} src={`http://localhost:3001${url}`} alt={`Imagem ${index + 1}`} />
+                              ))}
+                            </ImageContainer>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+                          <Button onClick={() => handleIncreasePriority(order._id, order.priority)} style={{ backgroundColor: '#10b981', padding: '0.5rem' }}>▲ Prioridade</Button>
+                          <Button onClick={() => handleDecreasePriority(order._id, order.priority)} style={{ backgroundColor: '#f59e0b', padding: '0.5rem' }}>▼ Prioridade</Button>
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
+                            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                          >
+                            <option value="pendente">Pendente</option>
+                            <option value="em_andamento">Em Andamento</option>
+                            <option value="concluido">Concluído</option>
+                            <option value="cancelado">Cancelado</option>
+                          </select>
+                          <select
+                            value={order.motorista?._id || ''}
+                            onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
+                            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+                          >
+                            <option value="">Desatribuir</option>
+                            {drivers.map(d => (
+                              <option key={d._id} value={d._id}>{d.username}</option>
+                            ))}
+                          </select>
+                          <Button className="delete" onClick={() => handleDeleteOrder(order._id)} style={{ backgroundColor: '#ef4444', padding: '0.5rem' }}>Excluir</Button>
+                        </div>
+                      </OrderCard>
+                    ))}
+                  </OrdersGrid>
+                ) : (
+                  <p>Nenhum pedido atribuído a este motorista.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'motoristas' && (
+          <div>
+            <ActionButtons>
+              <Button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }}>+ Adicionar Motorista</Button>
+            </ActionButtons>
+            <h2>Gerenciar Motoristas</h2>
+            <DriverList>
+              {drivers.map(driver => (
+                <DriverItem key={driver._id}>
+                  <span>{driver.username}</span>
+                  <div>
+                    <IconButton onClick={() => handleEditDriver(driver)}>✏️</IconButton>
+                    <IconButton className="delete" onClick={() => handleDeleteDriver(driver._id)}>🗑️</IconButton>
+                  </div>
+                </DriverItem>
+              ))}
+            </DriverList>
+          </div>
+        )}
+      </ContentContainer>
+
+      {/* Modais */}
+      {isOrderModalOpen && (
+        <CreateOrderModal
+          onClose={() => setIsOrderModalOpen(false)}
+          onOrderCreated={fetchData}
+          drivers={drivers}
+        />
+      )}
+
+      {isDriverModalOpen && (
+        <CreateDriverModal
+          onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
+          onDriverCreated={fetchData}
+          editingDriver={editingDriver}
+        />
+      )}
+    </AdminContainer>
+  );
+};
+
+export default AdminPage;
