@@ -1,6 +1,6 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import styled from 'styled-components';
-import type { IDriver, IOrder } from '../interfaces/index';
+import type { IDriver, IOrder } from '../interfaces';
 
 const ModalOverlay = styled.div`
   position: fixed;

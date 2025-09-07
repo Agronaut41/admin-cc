@@ -1,8 +1,9 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import styled from 'styled-components';
-import type { IDriver, IOrder } from '../interfaces/index';
+import type { IDriver, IOrder, ICacamba } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
+import CacambaList from '../components/CacambaList';
 
 // ==========================================================
 // ESTILOS
@@ -165,11 +166,16 @@ const IconButton = styled.button`
   &:hover {
     color: #2563eb;
   }
-  &.delete {
-    color: #ef4444; // Vermelho
-    &:hover {
-      color: #b91c1c;
-    }
+`;
+
+const DeleteButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444; // Vermelho
+  font-size: 1rem;
+  &:hover {
+    color: #b91c1c;
   }
 `;
 
@@ -184,6 +190,50 @@ const OrderImage = styled.img`
   width: 100px;
   height: 100px;
   object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+`;
+
+const CacambaSection = styled.div`
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  
+  h4 {
+    margin: 0 0 0.5rem 0;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+`;
+
+const SectionContainer = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+`;
+
+const PriorityButton = styled(Button)`
+  padding: 0.5rem;
+`;
+
+const IncreasePriorityButton = styled(PriorityButton)`
+  background-color: #10b981;
+`;
+
+const DecreasePriorityButton = styled(PriorityButton)`
+  background-color: #f59e0b;
+`;
+
+const DeleteOrderButton = styled(PriorityButton)`
+  background-color: #ef4444;
+`;
+
+const SelectInput = styled.select`
+  padding: 0.5rem;
   border-radius: 4px;
   border: 1px solid #ddd;
 `;
@@ -361,7 +411,7 @@ const AdminPage: React.FC = () => {
             </ActionButtons>
 
             {/* Pedidos Não Atribuídos */}
-            <div style={{ marginBottom: '2rem' }}>
+            <SectionContainer>
               <h2>Pedidos Não Atribuídos</h2>
               {unassignedOrders.length > 0 ? (
                 <OrdersGrid>
@@ -372,6 +422,12 @@ const AdminPage: React.FC = () => {
                       <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                       <p><strong>Status:</strong> {order.status}</p>
                       <p><strong>Prioridade:</strong> {order.priority}</p>
+                      {order.cacambas && order.cacambas.length > 0 && (
+                        <CacambaSection>
+                          <h4>Caçambas Registradas:</h4>
+                          <CacambaList cacambas={order.cacambas} />
+                        </CacambaSection>
+                      )}
                       {order.imageUrls && order.imageUrls.length > 0 && (
                         <div>
                           <h4>Imagens Anexadas:</h4>
@@ -382,42 +438,40 @@ const AdminPage: React.FC = () => {
                           </ImageContainer>
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                        <Button onClick={() => handleIncreasePriority(order._id, order.priority)} style={{ backgroundColor: '#10b981', padding: '0.5rem' }}>▲ Prioridade</Button>
-                        <Button onClick={() => handleDecreasePriority(order._id, order.priority)} style={{ backgroundColor: '#f59e0b', padding: '0.5rem' }}>▼ Prioridade</Button>
-                        <select
+                      <ButtonGroup>
+                        <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
+                        <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
+                        <SelectInput
                           value={order.status}
                           onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
-                          style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                         >
                           <option value="pendente">Pendente</option>
                           <option value="em_andamento">Em Andamento</option>
                           <option value="concluido">Concluído</option>
                           <option value="cancelado">Cancelado</option>
-                        </select>
-                        <select
+                        </SelectInput>
+                        <SelectInput
                           value={order.motorista?._id || ''}
                           onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
-                          style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                         >
                           <option value="">Atribuir</option>
                           {drivers.map(d => (
                             <option key={d._id} value={d._id}>{d.username}</option>
                           ))}
-                        </select>
-                        <Button className="delete" onClick={() => handleDeleteOrder(order._id)} style={{ backgroundColor: '#ef4444', padding: '0.5rem' }}>Excluir</Button>
-                      </div>
+                        </SelectInput>
+                        <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                      </ButtonGroup>
                     </OrderCard>
                   ))}
                 </OrdersGrid>
               ) : (
                 <p>Nenhum pedido não atribuído.</p>
               )}
-            </div>
+            </SectionContainer>
             
             {/* Pedidos por Motorista */}
             {drivers.map(driver => (
-              <div key={driver._id} style={{ marginBottom: '2rem' }}>
+              <SectionContainer key={driver._id}>
                 <h2>Pedidos do Motorista: {driver.username}</h2>
                 {ordersByDriver[driver._id]?.length > 0 ? (
                   <OrdersGrid>
@@ -428,6 +482,12 @@ const AdminPage: React.FC = () => {
                         <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                         <p><strong>Status:</strong> {order.status}</p>
                         <p><strong>Prioridade:</strong> {order.priority}</p>
+                        {order.cacambas && order.cacambas.length > 0 && (
+                          <CacambaSection>
+                            <h4>Caçambas Registradas:</h4>
+                            <CacambaList cacambas={order.cacambas} />
+                          </CacambaSection>
+                        )}
                         {order.imageUrls && order.imageUrls.length > 0 && (
                           <div>
                             <h4>Imagens Anexadas:</h4>
@@ -438,38 +498,27 @@ const AdminPage: React.FC = () => {
                             </ImageContainer>
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                          <Button onClick={() => handleIncreasePriority(order._id, order.priority)} style={{ backgroundColor: '#10b981', padding: '0.5rem' }}>▲ Prioridade</Button>
-                          <Button onClick={() => handleDecreasePriority(order._id, order.priority)} style={{ backgroundColor: '#f59e0b', padding: '0.5rem' }}>▼ Prioridade</Button>
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
-                            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                          >
-                            <option value="pendente">Pendente</option>
-                            <option value="em_andamento">Em Andamento</option>
-                            <option value="concluido">Concluído</option>
-                            <option value="cancelado">Cancelado</option>
-                          </select>
-                          <select
+                        <ButtonGroup>
+                          <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
+                          <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
+                          <SelectInput
                             value={order.motorista?._id || ''}
                             onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
-                            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
                           >
                             <option value="">Desatribuir</option>
                             {drivers.map(d => (
                               <option key={d._id} value={d._id}>{d.username}</option>
                             ))}
-                          </select>
-                          <Button className="delete" onClick={() => handleDeleteOrder(order._id)} style={{ backgroundColor: '#ef4444', padding: '0.5rem' }}>Excluir</Button>
-                        </div>
+                          </SelectInput>
+                          <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                        </ButtonGroup>
                       </OrderCard>
                     ))}
                   </OrdersGrid>
                 ) : (
                   <p>Nenhum pedido atribuído a este motorista.</p>
                 )}
-              </div>
+              </SectionContainer>
             ))}
           </div>
         )}
@@ -486,7 +535,7 @@ const AdminPage: React.FC = () => {
                   <span>{driver.username}</span>
                   <div>
                     <IconButton onClick={() => handleEditDriver(driver)}>✏️</IconButton>
-                    <IconButton className="delete" onClick={() => handleDeleteDriver(driver._id)}>🗑️</IconButton>
+                    <IconButton  onClick={() => handleDeleteDriver(driver._id)}>🗑️</IconButton>
                   </div>
                 </DriverItem>
               ))}

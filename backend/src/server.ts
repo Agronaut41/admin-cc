@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from './db';
 import { UserModel, IUser } from './models/User';
 import { OrderModel, IOrder } from './models/Order';
+import { CacambaModel, ICacamba } from './models/Cacamba';
 import multer from 'multer'; // Para lidar com upload de arquivos
 import path from 'path'; // Para lidar com caminhos de arquivos
 
@@ -115,13 +116,19 @@ app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest
     }
 });
 
-// Obter todos os pedidos (com info do motorista)
+// Obter todos os pedidos (com info do motorista e caçambas)
 app.get('/orders', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const orders = await OrderModel.find().populate({
-            path: 'motorista',
-            select: 'username'
-        }).sort({ priority: -1, createdAt: 1 });
+        const orders = await OrderModel.find().populate([
+            {
+                path: 'motorista',
+                select: 'username'
+            },
+            {
+                path: 'cacambas',
+                select: 'numero tipo imageUrl createdAt'
+            }
+        ]).sort({ priority: -1, createdAt: 1 });
         return res.status(200).json(orders);
     } catch (error) {
         console.error('Erro ao buscar pedidos:', error);
@@ -236,10 +243,73 @@ app.delete('/drivers/:id', authenticateToken, isAdmin, async (req, res) => {
 // Obter pedidos do motorista logado
 app.get('/driver/orders', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
     try {
-        const orders = await OrderModel.find({ motorista: req.userData?.userId }).sort({ priority: -1, createdAt: 1 });
+        const orders = await OrderModel.find({ motorista: req.userData?.userId }).populate({
+            path: 'cacambas',
+            select: 'numero tipo imageUrl createdAt'
+        }).sort({ priority: -1, createdAt: 1 });
         return res.status(200).json(orders);
     } catch (error) {
         console.error('Erro ao buscar pedidos do motorista:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Registrar caçamba para um pedido
+app.post('/driver/orders/:id/cacambas', authenticateToken, isDriver, upload.single('image'), async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const { numero, tipo } = req.body;
+    const file = req.file;
+    
+    // Verifique se o pedido pertence ao motorista logado
+    const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
+    if (!order) {
+        return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+    }
+
+    if (!file) {
+        return res.status(400).json({ message: 'Imagem é obrigatória.' });
+    }
+
+    const imageUrl = `/uploads/${file.filename}`;
+
+    try {
+        const newCacamba = new CacambaModel({
+            numero,
+            tipo,
+            imageUrl,
+            orderId: id
+        });
+        
+        await newCacamba.save();
+        
+        // Adicionar a caçamba ao pedido
+        await OrderModel.findByIdAndUpdate(id, {
+            $push: { cacambas: newCacamba._id },
+            updatedAt: Date.now()
+        });
+        
+        return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba: newCacamba });
+    } catch (error) {
+        console.error('Erro ao registrar caçamba:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// Obter caçambas de um pedido
+app.get('/driver/orders/:id/cacambas', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    
+    // Verifique se o pedido pertence ao motorista logado
+    const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
+    if (!order) {
+        return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+    }
+
+    try {
+        const cacambas = await CacambaModel.find({ orderId: id }).sort({ createdAt: 1 });
+        return res.status(200).json(cacambas);
+    } catch (error) {
+        console.error('Erro ao buscar caçambas:', error);
         return res.status(500).json({ message: 'Erro interno do servidor.' });
     }
 });

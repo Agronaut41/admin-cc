@@ -1,6 +1,8 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import styled from 'styled-components';
-import type { IOrder } from '../interfaces';
+import type { IOrder, ICacamba } from '../interfaces';
+import CacambaForm from '../components/CacambaForm';
+import CacambaList from '../components/CacambaList';
 
 // Estilos
 const DriverContainer = styled.div`
@@ -58,18 +60,6 @@ const OrderCard = styled.div`
     color: #666;
   }
 
-  .status-badge {
-    display: inline-block;
-    padding: 0.3rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: white;
-    background-color: #f59e0b; /* pendente */
-    &.concluido { background-color: #10b981; }
-    &.cancelado { background-color: #ef4444; }
-    &.em_andamento { background-color: #3b82f6; }
-  }
 `;
 
 const Form = styled.form`
@@ -99,11 +89,58 @@ const SubmitButton = styled.button`
   }
 `;
 
+const CacambaButton = styled.button`
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 0.5rem;
+  
+  &:hover {
+    background-color: #2563eb;
+  }
+`;
+
+const CacambaSection = styled.div`
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+`;
+
+const CacambaHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+  background-color: ${props => {
+    switch (props.status) {
+      case 'concluido': return '#10b981';
+      case 'cancelado': return '#ef4444';
+      case 'em_andamento': return '#3b82f6';
+      default: return '#f59e0b'; // pendente
+    }
+  }};
+`;
+
 // Componente principal da página do motorista
 const DriverPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [showCacambaForm, setShowCacambaForm] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
     const token = localStorage.getItem('token');
@@ -183,6 +220,29 @@ const DriverPage: React.FC = () => {
     }
   };
 
+  const handleAddCacamba = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setShowCacambaForm(true);
+  };
+
+  const handleCacambaAdded = (cacamba: ICacamba) => {
+    // Atualizar a lista de pedidos com a nova caçamba
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order._id === cacamba.orderId 
+          ? { ...order, cacambas: [...order.cacambas, cacamba] }
+          : order
+      )
+    );
+    setShowCacambaForm(false);
+    setSelectedOrderId(null);
+  };
+
+  const handleCloseCacambaForm = () => {
+    setShowCacambaForm(false);
+    setSelectedOrderId(null);
+  };
+
   if (loading) return <DriverContainer>Carregando pedidos...</DriverContainer>;
 
   return (
@@ -199,14 +259,26 @@ const DriverPage: React.FC = () => {
               <p><strong>Tipo:</strong> {order.type}</p>
               <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
               <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-              <p><strong>Status:</strong> <span className={`status-badge ${order.status}`}>{order.status}</span></p>
+              <p><strong>Status:</strong> <StatusBadge status={order.status}>{order.status}</StatusBadge></p>
 
               {order.status !== 'concluido' && (
-                <Form onSubmit={(e) => handleCompleteOrder(e, order._id)}>
-                  <h4>Concluir Pedido (Anexar Fotos)</h4>
-                  <FileInput type="file" multiple onChange={handleFileChange} accept="image/*" />
-                  <SubmitButton type="submit">Concluir e Enviar Fotos</SubmitButton>
-                </Form>
+                <>
+                  <CacambaSection>
+                    <CacambaHeader>
+                      <h4>Caçambas</h4>
+                      <CacambaButton onClick={() => handleAddCacamba(order._id)}>
+                        + Adicionar Caçamba
+                      </CacambaButton>
+                    </CacambaHeader>
+                    <CacambaList cacambas={order.cacambas || []} />
+                  </CacambaSection>
+
+                  <Form onSubmit={(e) => handleCompleteOrder(e, order._id)}>
+                    <h4>Concluir Pedido (Anexar Fotos)</h4>
+                    <FileInput type="file" multiple onChange={handleFileChange} accept="image/*" />
+                    <SubmitButton type="submit">Concluir e Enviar Fotos</SubmitButton>
+                  </Form>
+                </>
               )}
             </OrderCard>
           ))
@@ -214,6 +286,14 @@ const DriverPage: React.FC = () => {
           <p>Nenhum pedido atribuído a você no momento.</p>
         )}
       </OrdersGrid>
+
+      {showCacambaForm && selectedOrderId && (
+        <CacambaForm
+          orderId={selectedOrderId}
+          onCacambaAdded={handleCacambaAdded}
+          onClose={handleCloseCacambaForm}
+        />
+      )}
     </DriverContainer>
   );
 };

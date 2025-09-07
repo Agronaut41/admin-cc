@@ -5,6 +5,15 @@ export interface IDriver {
   username: string;
 }
 
+export interface ICacamba {
+  _id: string;
+  numero: string;
+  tipo: 'entrega' | 'retirada';
+  imageUrl: string;
+  orderId: string;
+  createdAt: string;
+}
+
 export interface IOrder {
   _id: string;
   clientName: string;
@@ -17,6 +26,8 @@ export interface IOrder {
   status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
   motorista?: IDriver | null;
   priority: number;
+  imageUrls: string[];
+  cacambas: ICacamba[];
   createdAt: string;
   updatedAt: string;
 }

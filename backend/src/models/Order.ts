@@ -14,6 +14,7 @@ export interface IOrder extends Document {
   motorista?: mongoose.Types.ObjectId;
   priority: number;
   imageUrls: string[]; // Adicione esta linha para armazenar as URLs das imagens
+  cacambas: mongoose.Types.ObjectId[]; // Array de IDs das caçambas
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,7 @@ const OrderSchema: Schema = new Schema({
   motorista: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   priority: { type: Number, default: 0 },
   imageUrls: [{ type: String }], // Adicione esta linha ao schema
+  cacambas: [{ type: Schema.Types.ObjectId, ref: 'Cacamba' }], // Array de IDs das caçambas
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
