@@ -3,6 +3,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IOrder extends Document {
+  orderNumber: number; // Novo campo
   clientName: string;
   contactName: string;
   contactNumber: string;
@@ -13,13 +14,14 @@ export interface IOrder extends Document {
   status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
   motorista?: mongoose.Types.ObjectId;
   priority: number;
-  imageUrls: string[]; // Adicione esta linha para armazenar as URLs das imagens
-  cacambas: mongoose.Types.ObjectId[]; // Array de IDs das caçambas
+  imageUrls: string[];
+  cacambas: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const OrderSchema: Schema = new Schema({
+  orderNumber: { type: Number, required: true, unique: true }, // Novo campo único e obrigatório
   clientName: { type: String, required: true },
   contactName: { type: String, required: true },
   contactNumber: { type: String, required: true },
@@ -30,8 +32,8 @@ const OrderSchema: Schema = new Schema({
   status: { type: String, enum: ['pendente', 'em_andamento', 'concluido', 'cancelado'], default: 'pendente' },
   motorista: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   priority: { type: Number, default: 0 },
-  imageUrls: [{ type: String }], // Adicione esta linha ao schema
-  cacambas: [{ type: Schema.Types.ObjectId, ref: 'Cacamba' }], // Array de IDs das caçambas
+  imageUrls: [{ type: String }],
+  cacambas: [{ type: Schema.Types.ObjectId, ref: 'Cacamba' }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

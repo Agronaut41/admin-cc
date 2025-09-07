@@ -4,7 +4,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import connectDB from './db';
 import { UserModel, IUser } from './models/User';
-import { OrderModel, IOrder } from './models/Order';
+import { OrderModel } from './models/Order';
 import { CacambaModel, ICacamba } from './models/Cacamba';
 import multer from 'multer'; // Para lidar com upload de arquivos
 import path from 'path'; // Para lidar com caminhos de arquivos
@@ -95,22 +95,23 @@ app.post('/login', async (req, res) => {
 
 // Criar um novo pedido
 app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest, res) => {
-    const { clientName, contactName, contactNumber, neighborhood, address, addressNumber, type, motorista, priority } = req.body;
     try {
+        // Buscar o maior orderNumber existente (ignorando nulos)
+        const lastOrder = await OrderModel.findOne({ orderNumber: { $ne: null } }).sort({ orderNumber: -1 });
+        const lastNumber = lastOrder && typeof lastOrder.orderNumber === 'number' ? lastOrder.orderNumber : 0;
+        const nextOrderNumber = lastNumber + 1;
+
         const newOrder = new OrderModel({
-            clientName,
-            contactName,
-            contactNumber,
-            neighborhood,
-            address,
-            addressNumber,
-            type,
-            motorista: motorista || null,
-            priority: priority || 0
+            ...req.body,
+            orderNumber: nextOrderNumber,
         });
+
         await newOrder.save();
         return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Já existe um pedido com esse número.' });
+        }
         console.error('Erro ao criar pedido:', error);
         return res.status(500).json({ message: 'Erro interno do servidor.' });
     }
@@ -314,26 +315,23 @@ app.get('/driver/orders/:id/cacambas', authenticateToken, isDriver, async (req: 
     }
 });
 
-// Atualizar status e anexar fotos
-app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, upload.array('photos', 5), async (req: AuthenticatedRequest, res) => {
+// Atualizar status do pedido para concluído (motorista) - sem anexar fotos
+app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
     const { id } = req.params;
-    const files = req.files as Express.Multer.File[];
-    
+
     // Verifique se o pedido pertence ao motorista logado
     const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
     if (!order) {
         return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
     }
 
-    const imageUrls = files.map(file => `/uploads/${file.filename}`);
-
     try {
         const updatedOrder = await OrderModel.findByIdAndUpdate(
             id,
-            { status: 'concluido', imageUrls, updatedAt: Date.now() },
+            { status: 'concluido', updatedAt: Date.now() },
             { new: true }
         );
-        return res.status(200).json({ message: 'Pedido concluído e fotos anexadas com sucesso!', order: updatedOrder });
+        return res.status(200).json({ message: 'Pedido concluído com sucesso!', order: updatedOrder });
     } catch (error) {
         console.error('Erro ao concluir pedido:', error);
         return res.status(500).json({ message: 'Erro interno do servidor.' });

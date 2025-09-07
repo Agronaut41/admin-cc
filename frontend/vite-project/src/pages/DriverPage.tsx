@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import type { IOrder, ICacamba } from '../interfaces';
 import CacambaForm from '../components/CacambaForm';
@@ -138,7 +138,6 @@ const StatusBadge = styled.span<{ status: string }>`
 const DriverPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [showCacambaForm, setShowCacambaForm] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -180,43 +179,22 @@ const DriverPage: React.FC = () => {
     fetchDriverOrders();
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(e.target.files);
-    }
-  };
-
-  const handleCompleteOrder = async (e: FormEvent, orderId: string) => {
-    e.preventDefault();
-    if (!selectedFiles || selectedFiles.length === 0) {
-      alert('Por favor, selecione pelo menos uma foto.');
-      return;
-    }
-
-    const formData = new FormData();
-    for (let i = 0; i < selectedFiles.length; i++) {
-      formData.append('photos', selectedFiles[i]);
-    }
-
+  const handleCompleteOrder = async (orderId: string) => {
+    if (!window.confirm('Deseja realmente marcar este pedido como concluído?')) return;
     try {
       const response = await authenticatedFetch(`http://localhost:3001/driver/orders/${orderId}/complete`, {
-        method: 'PATCH',
-        headers: {
-            // Não adicione o 'Content-Type', o FormData faz isso automaticamente
-        },
-        body: formData,
+        method: 'PATCH'
       });
-
       const data = await response.json();
       if (response.ok) {
-        alert('Pedido concluído com sucesso e fotos enviadas!');
-        fetchDriverOrders(); // Recarrega a lista de pedidos
+        alert('Pedido concluído com sucesso!');
+        fetchDriverOrders();
       } else {
         alert(data.message || 'Erro ao concluir o pedido.');
       }
     } catch (error) {
-      console.error('Erro no upload:', error);
-      alert('Erro ao enviar as fotos.');
+      console.error('Erro ao concluir pedido:', error);
+      alert('Erro ao concluir pedido.');
     }
   };
 
@@ -226,7 +204,6 @@ const DriverPage: React.FC = () => {
   };
 
   const handleCacambaAdded = (cacamba: ICacamba) => {
-    // Atualizar a lista de pedidos com a nova caçamba
     setOrders(prevOrders => 
       prevOrders.map(order => 
         order._id === cacamba.orderId 
@@ -272,12 +249,13 @@ const DriverPage: React.FC = () => {
                     </CacambaHeader>
                     <CacambaList cacambas={order.cacambas || []} />
                   </CacambaSection>
-
-                  <Form onSubmit={(e) => handleCompleteOrder(e, order._id)}>
-                    <h4>Concluir Pedido (Anexar Fotos)</h4>
-                    <FileInput type="file" multiple onChange={handleFileChange} accept="image/*" />
-                    <SubmitButton type="submit">Concluir e Enviar Fotos</SubmitButton>
-                  </Form>
+                  {/* Botão para concluir pedido */}
+                  <CacambaButton
+                    style={{ marginTop: '1rem', background: '#10b981' }}
+                    onClick={() => handleCompleteOrder(order._id)}
+                  >
+                    Concluir Pedido
+                  </CacambaButton>
                 </>
               )}
             </OrderCard>
