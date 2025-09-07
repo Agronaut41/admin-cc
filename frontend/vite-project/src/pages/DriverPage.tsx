@@ -238,6 +238,11 @@ const DriverPage: React.FC = () => {
     setSelectedOrderId(null);
   };
 
+  const openGoogleMapsRoute = (address: string, number: string, neighborhood: string) => {
+    const destination = encodeURIComponent(`${address}, ${number} - ${neighborhood}`);
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
+  };
+
   if (loading) return <DriverContainer>Carregando pedidos...</DriverContainer>;
 
   return (
@@ -247,14 +252,22 @@ const DriverPage: React.FC = () => {
         <p>Pedidos atribuídos a você</p>
       </Header>
       <OrdersGrid>
-        {orders.length > 0 ? (
-          orders.map(order => (
-            <OrderCard key={order._id}>
+        {orders
+          .filter(order => order.status !== 'concluido') // Apenas pedidos não concluídos
+          .map(order => (
+            <OrderCard key={order._id} status={order.status}>
               <h3>{order.clientName}</h3>
               <p><strong>Tipo:</strong> {order.type}</p>
               <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
               <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-              <p><strong>Status:</strong> <StatusBadge status={order.status}>{order.status}</StatusBadge></p>
+
+              {/* Botão Google Maps */}
+              <CacambaButton
+                style={{ background: '#ea4335', marginBottom: '0.5rem' }}
+                onClick={() => openGoogleMapsRoute(order.address, order.addressNumber, order.neighborhood)}
+              >
+                Ver rota no Google Maps
+              </CacambaButton>
 
               {order.status !== 'concluido' && (
                 <>
@@ -281,9 +294,7 @@ const DriverPage: React.FC = () => {
               )}
             </OrderCard>
           ))
-        ) : (
-          <p>Nenhum pedido atribuído a você no momento.</p>
-        )}
+        }
       </OrdersGrid>
 
       {showCacambaForm && selectedOrderId && (
