@@ -504,7 +504,7 @@ const AdminPage: React.FC = () => {
                           </h3>
                           <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                           <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                          <p><strong>Status:</strong> {order.status}</p>
+                          {/* <p><strong>Status:</strong> {order.status}</p> */}
                           <p><strong>Prioridade:</strong> {order.priority}</p>
                           {order.cacambas && order.cacambas.length > 0 && (
                             <CacambaSection>

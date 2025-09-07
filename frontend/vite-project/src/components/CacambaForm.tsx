@@ -139,11 +139,12 @@ const CancelButton = styled.button`
 
 interface CacambaFormProps {
   orderId: string;
+  orderType: 'entrega' | 'retirada' | 'troca';
   onCacambaAdded: (cacamba: ICacamba) => void;
   onClose: () => void;
 }
 
-const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, onCacambaAdded, onClose }) => {
+const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacambaAdded, onClose }) => {
   const [numero, setNumero] = useState('');
   const [tipo, setTipo] = useState<'entrega' | 'retirada'>('entrega');
   const [image, setImage] = useState<File | null>(null);
@@ -222,7 +223,7 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, onCacambaAdded, onCl
               type="text"
               value={numero}
               onChange={(e) => setNumero(e.target.value)}
-              placeholder="Ex: CAC001"
+              placeholder="Ex: 501"
               required
             />
           </FormGroup>
@@ -233,10 +234,15 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, onCacambaAdded, onCl
             </Label>
             <Select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as 'entrega' | 'retirada')}
+              onChange={e => setTipo(e.target.value as 'entrega' | 'retirada')}
+              required
             >
-              <option value="entrega">Entrega</option>
-              <option value="retirada">Retirada</option>
+              {(orderType === 'entrega' || orderType === 'troca') && (
+                <option value="entrega">Entrega</option>
+              )}
+              {(orderType === 'retirada' || orderType === 'troca') && (
+                <option value="retirada">Retirada</option>
+              )}
             </Select>
           </FormGroup>
 

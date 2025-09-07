@@ -157,6 +157,7 @@ const DriverPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCacambaForm, setShowCacambaForm] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderType, setSelectedOrderType] = useState<'entrega' | 'retirada' | 'troca' | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
 
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
@@ -216,8 +217,9 @@ const DriverPage: React.FC = () => {
     }
   };
 
-  const handleAddCacamba = (orderId: string) => {
+  const handleAddCacamba = (orderId: string, orderType: 'entrega' | 'retirada' | 'troca') => {
     setSelectedOrderId(orderId);
+    setSelectedOrderType(orderType);
     setShowCacambaForm(true);
   };
 
@@ -274,7 +276,7 @@ const DriverPage: React.FC = () => {
                   <CacambaSection>
                     <CacambaHeader>
                       <h4>Caçambas</h4>
-                      <CacambaButton onClick={() => handleAddCacamba(order._id)}>
+                      <CacambaButton onClick={() => handleAddCacamba(order._id, order.type)}>
                         + Adicionar Caçamba
                       </CacambaButton>
                     </CacambaHeader>
@@ -297,9 +299,10 @@ const DriverPage: React.FC = () => {
         }
       </OrdersGrid>
 
-      {showCacambaForm && selectedOrderId && (
+      {showCacambaForm && selectedOrderId && selectedOrderType && (
         <CacambaForm
           orderId={selectedOrderId}
+          orderType={selectedOrderType}
           onCacambaAdded={handleCacambaAdded}
           onClose={handleCloseCacambaForm}
         />
