@@ -77,9 +77,10 @@ const CacambaImage = styled.img`
 
 interface CacambaListProps {
   cacambas: ICacamba[];
+  onImageClick?: (url: string) => void;
 }
 
-const CacambaList: React.FC<CacambaListProps> = ({ cacambas }) => {
+const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick }) => {
   if (cacambas.length === 0) {
     return (
       <EmptyState>
@@ -110,11 +111,9 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas }) => {
             <ImageContainer>
               <CacambaImage
                 src={`http://localhost:3001${cacamba.imageUrl}`}
-                alt={`Caçamba ${cacamba.numero}`}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAyMEg0MFY0NEgyNFYyMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTI4IDI0SDM2VjQwSDI4VjI0WiIgZmlsbD0iI0QxRDVEQSIvPgo8L3N2Zz4K';
-                }}
+                alt="Foto da caçamba"
+                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+                onClick={() => onImageClick && onImageClick(`http://localhost:3001${cacamba.imageUrl}`)}
               />
             </ImageContainer>
           </CardContent>

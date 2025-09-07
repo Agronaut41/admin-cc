@@ -252,6 +252,7 @@ const AdminPage: React.FC = () => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<IDriver | null>(null);
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   // Função auxiliar para fazer requisições autenticadas
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
@@ -390,6 +391,8 @@ const AdminPage: React.FC = () => {
 
   return (
     <AdminContainer>
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+
       <Header>
         <h1>Painel de Administração de Caçambas</h1>
       </Header>
@@ -425,7 +428,10 @@ const AdminPage: React.FC = () => {
                       {order.cacambas && order.cacambas.length > 0 && (
                         <CacambaSection>
                           <h4>Caçambas Registradas:</h4>
-                          <CacambaList cacambas={order.cacambas} />
+                          <CacambaList
+                            cacambas={order.cacambas || []}
+                            onImageClick={setModalImage}
+                          />
                         </CacambaSection>
                       )}
                       {order.imageUrls && order.imageUrls.length > 0 && (
@@ -433,7 +439,13 @@ const AdminPage: React.FC = () => {
                           <h4>Imagens Anexadas:</h4>
                           <ImageContainer>
                             {order.imageUrls.map((url, index) => (
-                              <OrderImage key={index} src={`http://localhost:3001${url}`} alt={`Imagem ${index + 1}`} />
+                              <OrderImage
+                                key={index}
+                                src={`http://localhost:3001${url}`}
+                                alt={`Imagem ${index + 1}`}
+                                onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                                style={{ cursor: 'pointer' }}
+                              />
                             ))}
                           </ImageContainer>
                         </div>
@@ -485,7 +497,10 @@ const AdminPage: React.FC = () => {
                         {order.cacambas && order.cacambas.length > 0 && (
                           <CacambaSection>
                             <h4>Caçambas Registradas:</h4>
-                            <CacambaList cacambas={order.cacambas} />
+                            <CacambaList
+                              cacambas={order.cacambas || []}
+                              onImageClick={setModalImage}
+                            />
                           </CacambaSection>
                         )}
                         {order.imageUrls && order.imageUrls.length > 0 && (
@@ -493,7 +508,13 @@ const AdminPage: React.FC = () => {
                             <h4>Imagens Anexadas:</h4>
                             <ImageContainer>
                               {order.imageUrls.map((url, index) => (
-                                <OrderImage key={index} src={`http://localhost:3001${url}`} alt={`Imagem ${index + 1}`} />
+                                <OrderImage
+                                  key={index}
+                                  src={`http://localhost:3001${url}`}
+                                  alt={`Imagem ${index + 1}`}
+                                  onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                                  style={{ cursor: 'pointer' }}
+                                />
                               ))}
                             </ImageContainer>
                           </div>
@@ -563,5 +584,23 @@ const AdminPage: React.FC = () => {
     </AdminContainer>
   );
 };
+
+// Modal simples para imagem
+const ImageModal = ({ url, onClose }: { url: string, onClose: () => void }) => (
+  <div
+    style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }}
+    onClick={onClose}
+  >
+    <img
+      src={url}
+      alt="Visualização"
+      style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, background: '#fff' }}
+      onClick={e => e.stopPropagation()}
+    />
+  </div>
+);
 
 export default AdminPage;

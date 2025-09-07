@@ -134,12 +134,30 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
 `;
 
+const ImageModal = ({ url, onClose }: { url: string, onClose: () => void }) => (
+  <div
+    style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }}
+    onClick={onClose}
+  >
+    <img
+      src={url}
+      alt="Visualização"
+      style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, background: '#fff' }}
+      onClick={e => e.stopPropagation()}
+    />
+  </div>
+);
+
 // Componente principal da página do motorista
 const DriverPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCacambaForm, setShowCacambaForm] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
     const token = localStorage.getItem('token');
@@ -247,7 +265,10 @@ const DriverPage: React.FC = () => {
                         + Adicionar Caçamba
                       </CacambaButton>
                     </CacambaHeader>
-                    <CacambaList cacambas={order.cacambas || []} />
+                    <CacambaList
+                      cacambas={order.cacambas || []}
+                      onImageClick={setModalImage}
+                    />
                   </CacambaSection>
                   {/* Botão para concluir pedido */}
                   <CacambaButton
@@ -272,6 +293,8 @@ const DriverPage: React.FC = () => {
           onClose={handleCloseCacambaForm}
         />
       )}
+
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
     </DriverContainer>
   );
 };
