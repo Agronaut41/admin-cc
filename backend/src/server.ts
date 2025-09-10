@@ -8,9 +8,15 @@ import { OrderModel } from './models/Order';
 import { CacambaModel, ICacamba } from './models/Cacamba';
 import multer from 'multer'; // Para lidar com upload de arquivos
 import path from 'path'; // Para lidar com caminhos de arquivos
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 const app = express();
 const port = 3001;
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: { origin: '*' }
+});
 const JWT_SECRET = 'sua_senha_secreta_aqui';
 
 // Conectar ao banco de dados
@@ -107,6 +113,7 @@ app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest
         });
 
         await newOrder.save();
+        notifyDrivers();
         return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
     } catch (error: any) {
         if (error.code === 11000) {
@@ -161,6 +168,7 @@ app.delete('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
         if (!deletedOrder) {
             return res.status(404).json({ message: 'Pedido não encontrado.' });
         }
+        notifyDrivers();
         return res.status(200).json({ message: 'Pedido excluído com sucesso!' });
     } catch (error) {
         console.error('Erro ao excluir pedido:', error);
@@ -332,6 +340,8 @@ app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, async (req
             { status: 'concluido', updatedAt: Date.now() },
             { new: true }
         );
+        // Notificar todos os admins (emitir evento global)
+        io.emit('orders_updated');
         return res.status(200).json({ message: 'Pedido concluído com sucesso!', order: updatedOrder });
     } catch (error) {
         console.error('Erro ao concluir pedido:', error);
@@ -371,7 +381,38 @@ app.delete('/cacambas/:id', authenticateToken, isDriver, async (req, res) => {
   }
 });
 
-// Iniciar o servidor
-app.listen(port, () => {
-    console.log(`Servidor rodando em http://localhost:${port}`);
+// Mapeia userId -> socket.id[]
+const driverSockets: Record<string, Set<string>> = {};
+
+io.on('connection', (socket) => {
+  // Motorista envia seu userId após conectar
+  socket.on('register_driver', (userId: string) => {
+    if (!driverSockets[userId]) driverSockets[userId] = new Set();
+    driverSockets[userId].add(socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    // Remove socket de todos os arrays
+    Object.values(driverSockets).forEach(set => set.delete(socket.id));
+  });
 });
+
+// Função para notificar só o motorista específico
+const notifyDriver = (driverId: string) => {
+  const sockets = driverSockets[driverId];
+  if (sockets) {
+    sockets.forEach(socketId => {
+      io.to(socketId).emit('orders_updated');
+    });
+  }
+};
+
+// Notifique motoristas via socket
+const notifyDrivers = () => {
+  io.emit('orders_updated');
+};
+
+// Altere para usar server.listen
+server.listen(port, () => {
+  console.log(`Servidor rodando em http://localhost:${port}`);
+})

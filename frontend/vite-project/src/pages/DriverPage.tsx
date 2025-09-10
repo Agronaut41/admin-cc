@@ -4,6 +4,7 @@ import type { IOrder, ICacamba } from '../interfaces';
 import CacambaForm from '../components/CacambaForm';
 import CacambaList from '../components/CacambaList';
 import EditCacambaModal from '../components/EditCacambaModal'; // Crie este componente conforme instrução abaixo
+import { io } from 'socket.io-client';
 
 // Estilos
 const DriverContainer = styled.div`
@@ -162,6 +163,8 @@ const DriverPage: React.FC = () => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [editingCacamba, setEditingCacamba] = useState<ICacamba | null>(null);
 
+  const socket = io('http://localhost:3001'); // ajuste a URL se necessário
+
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -198,6 +201,14 @@ const DriverPage: React.FC = () => {
 
   useEffect(() => {
     fetchDriverOrders();
+
+    socket.on('orders_updated', () => {
+      fetchDriverOrders();
+    });
+
+    return () => {
+      socket.off('orders_updated');
+    };
   }, []);
 
   const handleCompleteOrder = async (orderId: string) => {

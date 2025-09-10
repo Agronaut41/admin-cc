@@ -4,6 +4,7 @@ import type { IDriver, IOrder, ICacamba } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';
+import { io } from 'socket.io-client';
 
 // ==========================================================
 // ESTILOS
@@ -301,8 +302,18 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const socket = io('http://localhost:3001');
+
   useEffect(() => {
     fetchData();
+
+    socket.on('orders_updated', () => {
+      fetchData();
+    });
+
+    return () => {
+      socket.off('orders_updated');
+    };
   }, []);
 
   // Funções de Gerenciamento de Pedidos
