@@ -251,51 +251,61 @@ const DriverPage: React.FC = () => {
     <DriverContainer>
       <Header>
         <h1>Painel do Motorista</h1>
-        <p>Pedidos atribuídos a você</p>
       </Header>
       <OrdersGrid>
         {orders
           .filter(order => order.status !== 'concluido') // Apenas pedidos não concluídos
-          .map(order => (
-            <OrderCard key={order._id} status={order.status}>
-              <h3>{order.clientName}</h3>
-              <p><strong>Tipo:</strong> {order.type}</p>
-              <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
-              <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+          .map(order => {
+            // Regra para mostrar o botão de concluir pedido:
+            // - entrega/retirada: pelo menos 1 caçamba
+            // - troca: pelo menos 2 caçambas
+            const canConclude =
+              (order.type === 'troca' && order.cacambas && order.cacambas.length >= 2) ||
+              ((order.type === 'entrega' || order.type === 'retirada') && order.cacambas && order.cacambas.length >= 1);
 
-              {/* Botão Google Maps */}
-              <CacambaButton
-                style={{ background: '#ea4335', marginBottom: '0.5rem' }}
-                onClick={() => openGoogleMapsRoute(order.address, order.addressNumber, order.neighborhood)}
-              >
-                Ver rota no Google Maps
-              </CacambaButton>
+            return (
+              <OrderCard key={order._id} status={order.status}>
+                <h3>{order.clientName}</h3>
+                <p><strong>Tipo:</strong> {order.type}</p>
+                <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 
-              {order.status !== 'concluido' && (
-                <>
-                  <CacambaSection>
-                    <CacambaHeader>
-                      <h4>Caçambas</h4>
-                      <CacambaButton onClick={() => handleAddCacamba(order._id, order.type)}>
-                        + Adicionar Caçamba
+                {/* Botão Google Maps */}
+                <CacambaButton
+                  style={{ background: '#ea4335', marginBottom: '0.5rem' }}
+                  onClick={() => openGoogleMapsRoute(order.address, order.addressNumber, order.neighborhood)}
+                >
+                  Ver rota no Google Maps
+                </CacambaButton>
+
+                {order.status !== 'concluido' && (
+                  <>
+                    <CacambaSection>
+                      <CacambaHeader>
+                        <h4>Caçambas</h4>
+                        <CacambaButton onClick={() => handleAddCacamba(order._id, order.type)}>
+                          + Adicionar Caçamba
+                        </CacambaButton>
+                      </CacambaHeader>
+                      <CacambaList
+                        cacambas={order.cacambas || []}
+                        onImageClick={setModalImage}
+                      />
+                    </CacambaSection>
+                    {/* Botão para concluir pedido - só aparece se regra for satisfeita */}
+                    {canConclude && (
+                      <CacambaButton
+                        style={{ marginTop: '1rem', background: '#10b981' }}
+                        onClick={() => handleCompleteOrder(order._id)}
+                      >
+                        Concluir Pedido
                       </CacambaButton>
-                    </CacambaHeader>
-                    <CacambaList
-                      cacambas={order.cacambas || []}
-                      onImageClick={setModalImage}
-                    />
-                  </CacambaSection>
-                  {/* Botão para concluir pedido */}
-                  <CacambaButton
-                    style={{ marginTop: '1rem', background: '#10b981' }}
-                    onClick={() => handleCompleteOrder(order._id)}
-                  >
-                    Concluir Pedido
-                  </CacambaButton>
-                </>
-              )}
-            </OrderCard>
-          ))
+                    )}
+                  </>
+                )}
+              </OrderCard>
+            );
+          })
         }
       </OrdersGrid>
 
