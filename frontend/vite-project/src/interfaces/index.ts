@@ -11,6 +11,7 @@ export interface ICacamba {
   tipo: 'entrega' | 'retirada';
   imageUrl: string;
   orderId: string;
+  local: 'via_publica' | 'canteiro_obra'; // <-- Adicione aqui
   createdAt: string;
 }
 

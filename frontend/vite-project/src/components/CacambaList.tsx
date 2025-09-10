@@ -93,6 +93,14 @@ const ActionButton = styled.button<{ color?: string }>`
   }
 `;
 
+const LocalInfo = styled.span`
+  display: block;
+  font-size: 0.85rem;
+  color: #3730a3;
+  margin-top: 0.2rem;
+  margin-left: 0.1rem;
+`;
+
 interface CacambaListProps {
   cacambas: ICacamba[];
   onImageClick?: (url: string) => void;
@@ -108,6 +116,8 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
       </EmptyState>
     );
   }
+
+  console.log(cacambas);
 
   return (
     <Container>
@@ -127,6 +137,17 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
               <DateInfo>
                 Registrada em: {new Date(cacamba.createdAt).toLocaleString('pt-BR')}
               </DateInfo>
+              {/* Exibe o local em texto para o admin */}
+              {'local' in cacamba && (
+                <LocalInfo>
+                  <strong>Local:</strong>{' '}
+                  {cacamba.local === 'via_publica'
+                    ? 'Via pública'
+                    : cacamba.local === 'canteiro_obra'
+                      ? 'Canteiro de obra'
+                      : ''}
+                </LocalInfo>
+              )}
             </InfoSection>
             <ImageContainer>
               <CacambaImage

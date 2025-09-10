@@ -7,6 +7,7 @@ export interface ICacamba extends Document {
   tipo: 'entrega' | 'retirada';
   imageUrl: string;
   orderId: mongoose.Types.ObjectId;
+  local: 'via_publica' | 'canteiro_obra'; // <-- Adicione aqui
   createdAt: Date;
 }
 
@@ -15,6 +16,7 @@ const CacambaSchema: Schema = new Schema({
   tipo: { type: String, enum: ['entrega', 'retirada'], required: true },
   imageUrl: { type: String, required: true },
   orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
+  local: { type: String, enum: ['via_publica', 'canteiro_obra'], required: true }, // <-- Adicione aqui
   createdAt: { type: Date, default: Date.now },
 });
 

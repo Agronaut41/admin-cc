@@ -147,18 +147,19 @@ interface CacambaFormProps {
 const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacambaAdded, onClose }) => {
   const [numero, setNumero] = useState('');
   const [tipo, setTipo] = useState<'entrega' | 'retirada'>('entrega');
+  const [local, setLocal] = useState<'via_publica' | 'canteiro_obra'>('via_publica'); // Novo estado
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!numero.trim()) {
       setError('Número da caçamba é obrigatório');
       return;
     }
-    
+
     if (!image) {
       setError('Imagem é obrigatória');
       return;
@@ -171,6 +172,7 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
       const formData = new FormData();
       formData.append('numero', numero);
       formData.append('tipo', tipo);
+      formData.append('local', local); // Envia o novo campo
       formData.append('image', image);
 
       const token = localStorage.getItem('token');
@@ -189,12 +191,13 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
 
       const data = await response.json();
       onCacambaAdded(data.cacamba);
-      
+
       // Reset form
       setNumero('');
       setTipo('entrega');
+      setLocal('via_publica');
       setImage(null);
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar caçamba');
     } finally {
@@ -243,6 +246,20 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
               {(orderType === 'retirada' || orderType === 'troca') && (
                 <option value="retirada">Retirada</option>
               )}
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>
+              Local
+            </Label>
+            <Select
+              value={local}
+              onChange={e => setLocal(e.target.value as 'via_publica' | 'canteiro_obra')}
+              required
+            >
+              <option value="via_publica">Via pública</option>
+              <option value="canteiro_obra">Canteiro de obra</option>
             </Select>
           </FormGroup>
 

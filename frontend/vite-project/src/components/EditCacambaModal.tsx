@@ -138,6 +138,9 @@ const CancelButton = styled.button`
 const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, onSave }) => {
   const [numero, setNumero] = useState(cacamba.numero);
   const [tipo, setTipo] = useState<'entrega' | 'retirada'>(cacamba.tipo);
+  const [local, setLocal] = useState<'via_publica' | 'canteiro_obra'>(
+    (cacamba as any).local || 'via_publica'
+  );
   const [image, setImage] = useState<File | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -145,6 +148,7 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
     onSave({
       numero,
       tipo,
+      local,
       image,
     });
   };
@@ -172,6 +176,19 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
             <Select value={tipo} onChange={e => setTipo(e.target.value as 'entrega' | 'retirada')}>
               <option value="entrega">Entrega</option>
               <option value="retirada">Retirada</option>
+            </Select>
+          </FormGroup>
+          <FormGroup>
+            <Label>
+              Local
+            </Label>
+            <Select
+              value={local}
+              onChange={e => setLocal(e.target.value as 'via_publica' | 'canteiro_obra')}
+              required
+            >
+              <option value="via_publica">Via pública</option>
+              <option value="canteiro_obra">Canteiro de obra</option>
             </Select>
           </FormGroup>
           <FormGroup>

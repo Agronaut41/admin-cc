@@ -127,7 +127,7 @@ app.get('/orders', authenticateToken, isAdmin, async (req, res) => {
             },
             {
                 path: 'cacambas',
-                select: 'numero tipo imageUrl createdAt'
+                select: 'numero tipo imageUrl createdAt local' // <-- Adicione local aqui!
             }
         ]).sort({ priority: -1, createdAt: 1 });
         return res.status(200).json(orders);
@@ -258,7 +258,7 @@ app.get('/driver/orders', authenticateToken, isDriver, async (req: Authenticated
 // Registrar caçamba para um pedido
 app.post('/driver/orders/:id/cacambas', authenticateToken, isDriver, upload.single('image'), async (req: AuthenticatedRequest, res) => {
     const { id } = req.params;
-    const { numero, tipo } = req.body;
+    const { numero, tipo, local } = req.body; // inclua local
     const file = req.file;
     
     // Verifique se o pedido pertence ao motorista logado
@@ -277,6 +277,7 @@ app.post('/driver/orders/:id/cacambas', authenticateToken, isDriver, upload.sing
         const newCacamba = new CacambaModel({
             numero,
             tipo,
+            local, // inclua local
             imageUrl,
             orderId: id
         });
@@ -344,6 +345,7 @@ app.patch('/cacambas/:id', authenticateToken, isDriver, upload.single('image'), 
     const update: any = {
       numero: req.body.numero,
       tipo: req.body.tipo,
+      local: req.body.local, // inclua local
     };
     if (req.file) {
       update.imageUrl = '/uploads/' + req.file.filename;
