@@ -75,12 +75,32 @@ const CacambaImage = styled.img`
   border: 1px solid #d1d5db;
 `;
 
+// Adicione estilos para os botões de ação
+const ActionButton = styled.button<{ color?: string }>`
+  background-color: ${({ color }) => color || '#3b82f6'};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  margin-left: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+
+  &:hover {
+    background-color: ${({ color }) => color === '#ef4444' ? '#b91c1c' : '#2563eb'};
+  }
+`;
+
 interface CacambaListProps {
   cacambas: ICacamba[];
   onImageClick?: (url: string) => void;
+  onEdit?: (cacamba: ICacamba) => void;
+  onDelete?: (cacambaId: string) => void;
 }
 
-const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick }) => {
+const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdit, onDelete }) => {
   if (cacambas.length === 0) {
     return (
       <EmptyState>
@@ -117,6 +137,18 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick }) => 
               />
             </ImageContainer>
           </CardContent>
+          <div>
+            {onEdit && (
+              <ActionButton onClick={() => onEdit(cacamba)}>
+                Editar
+              </ActionButton>
+            )}
+            {onDelete && (
+              <ActionButton color="#ef4444" onClick={() => onDelete(cacamba._id)}>
+                Excluir
+              </ActionButton>
+            )}
+          </div>
         </CacambaCard>
       ))}
     </Container>

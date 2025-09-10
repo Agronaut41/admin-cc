@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import type { IOrder, ICacamba } from '../interfaces';
 import CacambaForm from '../components/CacambaForm';
 import CacambaList from '../components/CacambaList';
+import EditCacambaModal from '../components/EditCacambaModal'; // Crie este componente conforme instrução abaixo
 
 // Estilos
 const DriverContainer = styled.div`
@@ -159,6 +160,7 @@ const DriverPage: React.FC = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedOrderType, setSelectedOrderType] = useState<'entrega' | 'retirada' | 'troca' | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [editingCacamba, setEditingCacamba] = useState<ICacamba | null>(null);
 
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
     const token = localStorage.getItem('token');
@@ -245,6 +247,32 @@ const DriverPage: React.FC = () => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
   };
 
+  // Handler para salvar edição
+  const handleSaveCacamba = async (updated: Partial<ICacamba>) => {
+    if (!editingCacamba) return;
+    const formData = new FormData();
+    formData.append('numero', updated.numero || editingCacamba.numero);
+    formData.append('tipo', updated.tipo || editingCacamba.tipo);
+    if (updated.image) formData.append('image', updated.image);
+
+    await authenticatedFetch(`http://localhost:3001/cacambas/${editingCacamba._id}`, {
+      method: 'PATCH',
+      body: formData,
+    });
+    setEditingCacamba(null);
+    fetchDriverOrders();
+  };
+
+  // Handler para excluir caçamba
+  const handleDeleteCacamba = async (cacambaId: string, orderId: string) => {
+    if (!window.confirm('Deseja realmente excluir esta caçamba?')) return;
+    await authenticatedFetch(`http://localhost:3001/cacambas/${cacambaId}`, {
+      method: 'DELETE',
+    });
+    // Atualize os pedidos após exclusão
+    fetchDriverOrders();
+  };
+
   if (loading) return <DriverContainer>Carregando pedidos...</DriverContainer>;
 
   return (
@@ -290,6 +318,8 @@ const DriverPage: React.FC = () => {
                       <CacambaList
                         cacambas={order.cacambas || []}
                         onImageClick={setModalImage}
+                        onEdit={order.status !== 'concluido' ? setEditingCacamba : undefined}
+                        onDelete={order.status !== 'concluido' ? (cacambaId) => handleDeleteCacamba(cacambaId, order._id) : undefined}
                       />
                     </CacambaSection>
                     {/* Botão para concluir pedido - só aparece se regra for satisfeita */}
@@ -319,6 +349,14 @@ const DriverPage: React.FC = () => {
       )}
 
       {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+
+      {editingCacamba && (
+        <EditCacambaModal
+          cacamba={editingCacamba}
+          onClose={() => setEditingCacamba(null)}
+          onSave={handleSaveCacamba}
+        />
+      )}
     </DriverContainer>
   );
 };

@@ -338,6 +338,37 @@ app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, async (req
     }
 });
 
+// Editar caçamba (motorista)
+app.patch('/cacambas/:id', authenticateToken, isDriver, upload.single('image'), async (req, res) => {
+  try {
+    const update: any = {
+      numero: req.body.numero,
+      tipo: req.body.tipo,
+    };
+    if (req.file) {
+      update.imageUrl = '/uploads/' + req.file.filename;
+    }
+    const cacamba = await CacambaModel.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!cacamba) return res.status(404).json({ message: 'Caçamba não encontrada' });
+    res.json(cacamba);
+  } catch (err) {
+    res.status(500).json({ message: 'Erro ao editar caçamba' });
+  }
+});
+
+// Excluir caçamba (motorista)
+app.delete('/cacambas/:id', authenticateToken, isDriver, async (req, res) => {
+  try {
+    const cacamba = await CacambaModel.findByIdAndDelete(req.params.id);
+    if (!cacamba) return res.status(404).json({ message: 'Caçamba não encontrada' });
+    // Remover referência da caçamba do pedido
+    await OrderModel.findByIdAndUpdate(cacamba.orderId, { $pull: { cacambas: cacamba._id } });
+    res.json({ message: 'Caçamba excluída com sucesso' });
+  } catch (err) {
+    res.status(500).json({ message: 'Erro ao excluir caçamba' });
+  }
+});
+
 // Iniciar o servidor
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
