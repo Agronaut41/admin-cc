@@ -522,4 +522,45 @@ const notifyDrivers = () => {
 // Altere para usar server.listen
 server.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
-})
+});
+
+// Listar pedidos de um cliente específico com filtros
+app.get('/clients/:id/orders', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, type, local } = req.query;
+
+    const query: any = { clientId: id };
+
+    // Filtro de data
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate as string),
+        $lte: new Date(endDate as string),
+      };
+    }
+
+    // Filtro de tipo de pedido
+    if (type) {
+      query.type = type;
+    }
+    
+    // Filtro de local da caçamba (requer uma consulta mais complexa)
+    if (local) {
+        // Encontra caçambas com o local especificado
+        const cacambas = await CacambaModel.find({ local: local as string }).select('_id');
+        const cacambaIds = cacambas.map(c => c._id);
+        // Filtra pedidos que contenham qualquer uma dessas caçambas
+        query.cacambas = { $in: cacambaIds };
+    }
+
+    const orders = await OrderModel.find(query)
+      .populate('cacambas')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Erro ao buscar pedidos do cliente:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+});

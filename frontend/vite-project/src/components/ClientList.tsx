@@ -58,9 +58,10 @@ interface Props {
   clients: IClient[];
   onEdit: (client: IClient) => void;
   onDelete: (id: string) => void;
+  onViewOrders: (client: IClient) => void; // Adicione esta linha
 }
 
-const ClientList: React.FC<Props> = ({ clients, onEdit, onDelete }) => {
+const ClientList: React.FC<Props> = ({ clients, onEdit, onDelete, onViewOrders }) => {
   return (
     <Container>
       <Table>
@@ -92,12 +93,19 @@ const ClientList: React.FC<Props> = ({ clients, onEdit, onDelete }) => {
                   Editar
                 </ActionButton>
                 <ActionButton 
+                  onClick={() => onViewOrders(client)} 
+                  style={{ background: '#10b981' }}
+                >
+                  Ver Pedidos
+                </ActionButton>
+                <ActionButton 
                   className="delete" 
                   onClick={() => {
                     if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
                       onDelete(client._id);
                     }
                   }}
+                  color="#ef4444"
                 >
                   Excluir
                 </ActionButton>

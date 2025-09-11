@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import ClientList from '../components/ClientList';
 import ClientForm from '../components/ClientForm';
+import ClientOrdersModal from '../components/ClientOrdersModal'; // Importe o novo modal
 import type { IClient } from '../interfaces';
 
 const Container = styled.div`
@@ -40,6 +41,10 @@ const ClientPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<IClient | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Novos estados para o modal de pedidos
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
 
   const fetchClients = async () => {
     try {
@@ -137,6 +142,11 @@ const ClientPage: React.FC = () => {
     setShowForm(true);
   };
 
+  const handleViewOrdersClick = (client: IClient) => {
+    setSelectedClient(client);
+    setIsOrdersModalOpen(true);
+  };
+
   if (loading) {
     return <div>Carregando...</div>;
   }
@@ -172,6 +182,15 @@ const ClientPage: React.FC = () => {
           clients={clients}
           onEdit={handleEditButtonClick}
           onDelete={handleDeleteClient}
+          onViewOrders={handleViewOrdersClick} // Passe a nova função
+        />
+      )}
+
+      {/* Renderize o novo modal */}
+      {isOrdersModalOpen && selectedClient && (
+        <ClientOrdersModal
+          client={selectedClient}
+          onClose={() => setIsOrdersModalOpen(false)}
         />
       )}
     </Container>
