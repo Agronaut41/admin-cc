@@ -1,9 +1,10 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import type { IDriver, IOrder, ICacamba } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';
+import ClientPage from './ClientPage';
 import { io } from 'socket.io-client';
 
 // ==========================================================
@@ -243,7 +244,7 @@ const SelectInput = styled.select`
 // COMPONENTE PRINCIPAL
 // ==========================================================
 const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'pedidos' | 'motoristas'>('pedidos');
+  const [activeTab, setActiveTab] = useState<'pedidos' | 'motoristas' | 'clientes' | 'cacambas'>('pedidos');
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [drivers, setDrivers] = useState<IDriver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -412,12 +413,19 @@ const AdminPage: React.FC = () => {
         <Tab active={activeTab === 'pedidos'} onClick={() => setActiveTab('pedidos')}>
           Pedidos
         </Tab>
+        <Tab active={activeTab === 'clientes'} onClick={() => setActiveTab('clientes')}>
+          Clientes
+        </Tab>
         <Tab active={activeTab === 'motoristas'} onClick={() => setActiveTab('motoristas')}>
           Motoristas
         </Tab>
       </TabContainer>
 
       <ContentContainer>
+        {activeTab === 'clientes' && (
+          <ClientPage />
+        )}
+
         {activeTab === 'pedidos' && (
           <div>
             <ActionButtons>

@@ -6,6 +6,7 @@ import connectDB from './db';
 import { UserModel, IUser } from './models/User';
 import { OrderModel } from './models/Order';
 import { CacambaModel, ICacamba } from './models/Cacamba';
+import { ClientModel } from './models/Client';
 import multer from 'multer'; // Para lidar com upload de arquivos
 import path from 'path'; // Para lidar com caminhos de arquivos
 import http from 'http';
@@ -101,27 +102,48 @@ app.post('/login', async (req, res) => {
 
 // Criar um novo pedido
 app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest, res) => {
-    try {
-        // Buscar o maior orderNumber existente (ignorando nulos)
-        const lastOrder = await OrderModel.findOne({ orderNumber: { $ne: null } }).sort({ orderNumber: -1 });
-        const lastNumber = lastOrder && typeof lastOrder.orderNumber === 'number' ? lastOrder.orderNumber : 0;
-        const nextOrderNumber = lastNumber + 1;
+  try {
+    const { clientId, type, motorista } = req.body;
 
-        const newOrder = new OrderModel({
-            ...req.body,
-            orderNumber: nextOrderNumber,
-        });
-
-        await newOrder.save();
-        notifyDrivers();
-        return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
-    } catch (error: any) {
-        if (error.code === 11000) {
-            return res.status(400).json({ message: 'Já existe um pedido com esse número.' });
-        }
-        console.error('Erro ao criar pedido:', error);
-        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    if (!clientId) {
+      return res.status(400).json({ message: 'ID do cliente é obrigatório.' });
     }
+
+    const client = await ClientModel.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Cliente não encontrado.' });
+    }
+
+    const lastOrder = await OrderModel.findOne({ orderNumber: { $ne: null } }).sort({ orderNumber: -1 });
+    const nextOrderNumber = (lastOrder?.orderNumber || 0) + 1;
+
+    const newOrder = new OrderModel({
+      // Dados do cliente
+      clientId: client._id,
+      clientName: client.clientName,
+      contactName: client.contactName,
+      contactNumber: client.contactNumber,
+      neighborhood: client.neighborhood,
+      address: client.address,
+      addressNumber: client.addressNumber,
+
+      // Dados específicos do pedido
+      orderNumber: nextOrderNumber,
+      type: type,
+      motorista: motorista || null,
+    });
+
+    await newOrder.save();
+    notifyDrivers(); // Notifica via WebSocket, se estiver usando
+    return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
+
+  } catch (error: any) {
+    console.error('Erro ao criar pedido:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Erro de validação', details: error.errors });
+    }
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
 });
 
 // Obter todos os pedidos (com info do motorista e caçambas)
@@ -173,6 +195,91 @@ app.delete('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
     } catch (error) {
         console.error('Erro ao excluir pedido:', error);
         return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+});
+
+// ==========================================================
+// ROTAS DE GERENCIAMENTO DE CLIENTES
+// ==========================================================
+
+// Listar todos os clientes
+app.get('/clients', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
+    try {
+        const clients = await ClientModel.find().sort({ clientName: 1 }); // Alterado de 'name' para 'clientName'
+        res.status(200).json(clients);
+    } catch (error) {
+        console.error('Erro ao buscar clientes:', error);
+        res.status(500).json({ message: 'Erro ao buscar clientes.' });
+    }
+});
+
+// Criar novo cliente
+app.post('/clients', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
+    try {
+        const { clientName, contactName, contactNumber, neighborhood, address, addressNumber } = req.body;
+        
+        // Validar dados obrigatórios
+        if (!clientName || !contactName || !contactNumber || !neighborhood || !address || !addressNumber) {
+            return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+        }
+
+        const client = new ClientModel({
+            clientName, // Alterado de 'name' para 'clientName'
+            contactName,
+            contactNumber,
+            neighborhood,
+            address,
+            addressNumber
+        });
+
+        await client.save();
+        res.status(201).json(client);
+    } catch (error) {
+        console.error('Erro ao criar cliente:', error);
+        res.status(500).json({ message: 'Erro ao criar cliente.' });
+    }
+});
+
+// Atualizar cliente
+app.patch('/clients/:id', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        const client = await ClientModel.findByIdAndUpdate(id, updates, { new: true });
+        if (!client) {
+            return res.status(404).json({ message: 'Cliente não encontrado.' });
+        }
+
+        res.status(200).json(client);
+    } catch (error) {
+        console.error('Erro ao atualizar cliente:', error);
+        res.status(500).json({ message: 'Erro ao atualizar cliente.' });
+    }
+});
+
+// Excluir cliente
+app.delete('/clients/:id', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
+    try {
+        const { id } = req.params;
+
+        // Verificar se existem pedidos associados ao cliente
+        const orderCount = await OrderModel.countDocuments({ clientId: id });
+        if (orderCount > 0) {
+            return res.status(400).json({ 
+                message: 'Não é possível excluir o cliente pois existem pedidos associados.' 
+            });
+        }
+
+        const client = await ClientModel.findByIdAndDelete(id);
+        if (!client) {
+            return res.status(404).json({ message: 'Cliente não encontrado.' });
+        }
+
+        res.status(200).json({ message: 'Cliente excluído com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao excluir cliente:', error);
+        res.status(500).json({ message: 'Erro ao excluir cliente.' });
     }
 });
 

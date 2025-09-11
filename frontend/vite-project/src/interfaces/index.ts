@@ -1,5 +1,15 @@
 // src/interfaces/index.ts
 
+export interface IClient {
+  _id: string;
+  name: string;
+  contactName: string;
+  contactNumber: string;
+  neighborhood: string;
+  address: string;
+  addressNumber: string;
+}
+
 export interface IDriver {
   _id: string;
   username: string;
@@ -17,6 +27,7 @@ export interface ICacamba {
 
 export interface IOrder {
   _id: string;
+  orderNumber: number;
   clientName: string;
   contactName: string;
   contactNumber: string;

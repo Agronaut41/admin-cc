@@ -117,8 +117,6 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
     );
   }
 
-  console.log(cacambas);
-
   return (
     <Container>
       <Title>Caçambas Registradas:</Title>

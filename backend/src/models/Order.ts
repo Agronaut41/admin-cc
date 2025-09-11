@@ -3,8 +3,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IOrder extends Document {
-  orderNumber: number; // Novo campo
-  clientName: string;
+  orderNumber: number;
+  clientName: string; // Manter para referência rápida, mas não obrigatório no schema
   contactName: string;
   contactNumber: string;
   neighborhood: string;
@@ -18,22 +18,41 @@ export interface IOrder extends Document {
   cacambas: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
+  clientId: mongoose.Types.ObjectId; // Referência ao cliente
 }
 
 const OrderSchema: Schema = new Schema({
-  orderNumber: { type: Number, required: true, unique: true }, // Novo campo único e obrigatório
-  clientName: { type: String, required: true },
-  contactName: { type: String, required: true },
-  contactNumber: { type: String, required: true },
-  neighborhood: { type: String, required: true },
-  address: { type: String, required: true },
-  addressNumber: { type: String, required: true },
-  type: { type: String, enum: ['entrega', 'retirada', 'troca'], required: true },
-  status: { type: String, enum: ['pendente', 'em_andamento', 'concluido', 'cancelado'], default: 'pendente' },
-  motorista: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  orderNumber: { type: Number, unique: true },
+  // Campos que virão do cliente (não são mais obrigatórios no pedido)
+  clientName: { type: String },
+  contactName: { type: String },
+  contactNumber: { type: String },
+  neighborhood: { type: String },
+  address: { type: String },
+  addressNumber: { type: String },
+
+  // Referência obrigatória ao cliente
+  clientId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Client',
+    required: true,
+  },
+
+  // Campos específicos do pedido
+  type: {
+    type: String,
+    enum: ['entrega', 'retirada', 'troca'],
+    required: true,
+  },
   priority: { type: Number, default: 0 },
-  imageUrls: [{ type: String }],
+  status: {
+    type: String,
+    enum: ['pendente', 'em_andamento', 'concluido'],
+    default: 'pendente',
+  },
+  motorista: { type: Schema.Types.ObjectId, ref: 'User' },
   cacambas: [{ type: Schema.Types.ObjectId, ref: 'Cacamba' }],
+  imageUrls: [String],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
