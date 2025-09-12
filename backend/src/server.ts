@@ -1,4 +1,6 @@
-// src/server.ts
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
@@ -13,12 +15,12 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: { origin: '*' }
 });
-const JWT_SECRET = 'sua_senha_secreta_aqui';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Conectar ao banco de dados
 connectDB();
@@ -43,21 +45,41 @@ app.use(cors());
 
 // Interfaces e Middlewares de autenticação
 interface AuthenticatedRequest extends express.Request {
-    userData?: { userId: string; role: 'admin' | 'motorista' };
+  userData?: {
+    userId: string;
+    role: 'admin' | 'motorista';
+  };
 }
 
 const authenticateToken = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({ message: 'Autenticação falhou. Token ausente.' });
-        }
-        const decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string; role: 'admin' | 'motorista' };
-        req.userData = { userId: decodedToken.userId, role: decodedToken.role };
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: 'Autenticação falhou. Token inválido.' });
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (token == null) {
+    return res.sendStatus(401); // Unauthorized
+  }
+
+  if (!JWT_SECRET) {
+    return res.status(500).json({ message: 'JWT Secret não configurado no servidor.' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.sendStatus(403); // Forbidden
     }
+
+    // Verificação de tipo segura
+    if (typeof decoded === 'object' && decoded !== null && 'userId' in decoded && 'role' in decoded) {
+      req.userData = {
+        userId: (decoded as any).userId,
+        role: (decoded as any).role
+      };
+      next();
+    } else {
+      // O token decodificado não tem o formato esperado
+      return res.status(403).json({ message: 'Token inválido ou malformado.' });
+    }
+  });
 };
 
 const isAdmin = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
@@ -84,9 +106,16 @@ app.post('/login', async (req, res) => {
         if (!user || user.password !== password) {
             return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
+
+        // Adicione esta verificação
+        if (!JWT_SECRET) {
+            console.error('Erro: JWT_SECRET não está definido nas variáveis de ambiente.');
+            return res.status(500).json({ message: 'Erro de configuração interna do servidor.' });
+        }
+
         const token = jwt.sign(
             { userId: user._id, role: user.role },
-            JWT_SECRET,
+            JWT_SECRET, // Agora o TypeScript sabe que JWT_SECRET é uma string
             { expiresIn: '1h' }
         );
         return res.status(200).json({ message: 'Login bem-sucedido!', token, role: user.role });

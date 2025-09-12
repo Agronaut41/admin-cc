@@ -1,10 +1,11 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.js",  
   "scripts": {
-    "dev": "nodemon",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.3.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
