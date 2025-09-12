@@ -149,7 +149,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
             <Select value={selectedClientId} onChange={handleClientChange} required>
               <option value="">-- Escolha um cliente --</option>
               {clients.map(client => (
-                <option key={client._id} value={client._id}>{client.name}</option>
+                <option key={client._id} value={client._id}>{client.clientName}</option>
               ))}
             </Select>
           </FormGroup>

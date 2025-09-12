@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import type { IOrder, IDriver, IClient } from '../interfaces';
+import type { IOrder, IDriver } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';

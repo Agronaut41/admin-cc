@@ -190,21 +190,19 @@ const DriverPage: React.FC = () => {
   };
 
   const handleCompleteOrder = async (orderId: string) => {
-    if (!window.confirm('Deseja realmente marcar este pedido como concluído?')) return;
+    const token = localStorage.getItem('token');
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/driver/orders/${orderId}/complete`, {
-        method: 'PATCH'
+      const response = await fetch(`http://localhost:3001/driver/orders/${orderId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      const data = await response.json();
       if (response.ok) {
-        alert('Pedido concluído com sucesso!');
         fetchDriverOrders();
       } else {
-        alert(data.message || 'Erro ao concluir o pedido.');
+        console.error('Erro ao concluir pedido');
       }
     } catch (error) {
-      console.error('Erro ao concluir pedido:', error);
-      alert('Erro ao concluir pedido.');
+      console.error('Erro de rede:', error);
     }
   };
 

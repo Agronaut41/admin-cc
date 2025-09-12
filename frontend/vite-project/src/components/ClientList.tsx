@@ -79,7 +79,7 @@ const ClientList: React.FC<Props> = ({ clients, onEdit, onDelete, onViewOrders }
         <tbody>
           {clients.map((client) => (
             <Tr key={client._id}>
-              <Td>{client.name}</Td>
+              <Td>{client.clientName}</Td>
               <Td>{client.contactName}</Td>
               <Td>{client.contactNumber}</Td>
               <Td>{client.neighborhood}</Td>
