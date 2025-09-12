@@ -64,33 +64,6 @@ const OrderCard = styled.div`
 
 `;
 
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 1rem;
-`;
-
-const FileInput = styled.input`
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-`;
-
-const SubmitButton = styled.button`
-  background-color: #10b981;
-  color: white;
-  padding: 0.8rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: #059669;
-  }
-`;
-
 const CacambaButton = styled.button`
   background-color: #3b82f6;
   color: white;
@@ -117,23 +90,6 @@ const CacambaHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-`;
-
-const StatusBadge = styled.span<{ status: string }>`
-  display: inline-block;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: white;
-  background-color: ${props => {
-    switch (props.status) {
-      case 'concluido': return '#10b981';
-      case 'cancelado': return '#ef4444';
-      case 'em_andamento': return '#3b82f6';
-      default: return '#f59e0b'; // pendente
-    }
-  }};
 `;
 
 const ImageModal = ({ url, onClose }: { url: string, onClose: () => void }) => (
@@ -211,6 +167,28 @@ const DriverPage: React.FC = () => {
     };
   }, []);
 
+  const handleUpdateCacamba = async (cacambaId: string, updatedCacamba: Partial<ICacamba> & { image?: File | null }) => {
+    const formData = new FormData();
+    
+    // Use Object.entries para iterar sobre as propriedades
+    Object.entries(updatedCacamba).forEach(([key, value]) => {
+      if (key !== 'image' && value !== undefined) {
+        formData.append(key, value as string);
+      }
+    });
+
+    if (updatedCacamba.image) {
+      formData.append('image', updatedCacamba.image);
+    }
+
+    await authenticatedFetch(`http://localhost:3001/cacambas/${cacambaId}`, {
+      method: 'PATCH',
+      body: formData,
+    });
+    setEditingCacamba(null);
+    fetchDriverOrders();
+  };
+
   const handleCompleteOrder = async (orderId: string) => {
     if (!window.confirm('Deseja realmente marcar este pedido como concluído?')) return;
     try {
@@ -258,22 +236,6 @@ const DriverPage: React.FC = () => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
   };
 
-  // Handler para salvar edição
-  const handleSaveCacamba = async (updated: Partial<ICacamba>) => {
-    if (!editingCacamba) return;
-    const formData = new FormData();
-    formData.append('numero', updated.numero || editingCacamba.numero);
-    formData.append('tipo', updated.tipo || editingCacamba.tipo);
-    if (updated.image) formData.append('image', updated.image);
-
-    await authenticatedFetch(`http://localhost:3001/cacambas/${editingCacamba._id}`, {
-      method: 'PATCH',
-      body: formData,
-    });
-    setEditingCacamba(null);
-    fetchDriverOrders();
-  };
-
   // Handler para excluir caçamba
   const handleDeleteCacamba = async (cacambaId: string, orderId: string) => {
     if (!window.confirm('Deseja realmente excluir esta caçamba?')) return;
@@ -317,7 +279,7 @@ const DriverPage: React.FC = () => {
                   Ver rota no Google Maps
                 </CacambaButton>
 
-                {order.status !== 'concluido' && (
+                {order.status !== 'concluido' && order.status !== 'cancelado' && (
                   <>
                     <CacambaSection>
                       <CacambaHeader>
@@ -365,7 +327,7 @@ const DriverPage: React.FC = () => {
         <EditCacambaModal
           cacamba={editingCacamba}
           onClose={() => setEditingCacamba(null)}
-          onSave={handleSaveCacamba}
+          onSave={handleUpdateCacamba}
         />
       )}
     </DriverContainer>

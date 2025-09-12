@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import type { IDriver, IOrder, ICacamba } from '../interfaces';
+import type { IOrder, IDriver, IClient } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';
@@ -167,17 +167,6 @@ const IconButton = styled.button`
   font-size: 1rem;
   &:hover {
     color: #2563eb;
-  }
-`;
-
-const DeleteButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #ef4444; // Vermelho
-  font-size: 1rem;
-  &:hover {
-    color: #b91c1c;
   }
 `;
 

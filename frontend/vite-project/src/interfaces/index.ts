@@ -2,7 +2,7 @@
 
 export interface IClient {
   _id: string;
-  name: string;
+  clientName: string; // Garanta que este campo se chama clientName
   contactName: string;
   contactNumber: string;
   neighborhood: string;
