@@ -5,23 +5,26 @@ import ClientForm from '../components/ClientForm';
 import ClientOrdersModal from '../components/ClientOrdersModal'; // Importe o novo modal
 import type { IClient } from '../interfaces';
 
-const Container = styled.div`
-  padding: 20px;
-`;
+const Container = styled.div``;
 
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+
+   @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const Title = styled.h2`
-  margin: 0;
+  margin: 0; // Adicione esta linha para remover as margens padrão do h2
   color: #333;
 `;
 
-const Button = styled.button`
+const AddButton = styled.button`
   padding: 10px 20px;
   background: #3b82f6;
   color: white;
@@ -157,9 +160,9 @@ const ClientPage: React.FC = () => {
       <Header>
         <Title>Gerenciamento de Clientes</Title>
         {!showForm && (
-          <Button onClick={() => setShowForm(true)}>
+          <AddButton onClick={() => setShowForm(true)}>
             Adicionar Cliente
-          </Button>
+          </AddButton>
         )}
       </Header>
 

@@ -3,19 +3,26 @@ import styled from 'styled-components';
 
 // Estilos que você já criou
 const FormWrapper = styled.div`
-  padding: 2rem;
   background-color: white;
-  border-radius: 0.5rem;
+  padding: 40px;
+  border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 400px;
+  max-width: 400px; // Limita a largura em telas grandes
+
+  // Adiciona a media query para telas menores
+  @media (max-width: 480px) {
+    padding: 20px; // Reduz o padding no mobile
+    width: 80%; // Ocupa 90% da largura da tela
+    box-shadow: none;
+    border-radius: 0;
+  }
 `;
 
 const Title = styled.h2`
-  font-size: 1.5rem;
-  font-weight: bold;
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
+  color: #111827;
 `;
 
 const Form = styled.form`
@@ -38,7 +45,7 @@ const Input = styled.input`
   box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
   appearance: none;
   border-radius: 0.25rem;
-  width: 100%;
+  width: -webkit-fill-available;
   padding: 0.5rem 0.75rem;
   color: #4b5563;
   line-height: 1.25;

@@ -9,8 +9,9 @@ import LoginForm from '../components/LoginForm';
 // Estilos
 const Container = styled.div`
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   min-height: 100vh;
   background-color: #f3f4f6;
 `;
@@ -77,16 +78,14 @@ const LoginPage: React.FC = () => {
 
     return (
         <Container>
-            <div>
-                <LoginForm
-                    username={username}
-                    password={password}
-                    setUsername={setUsername}
-                    setPassword={setPassword}
-                    onSubmit={handleSubmit}
-                />
-                {error && <ErrorMessage>{error}</ErrorMessage>}
-            </div>
+            <LoginForm
+                username={username}
+                password={password}
+                setUsername={setUsername}
+                setPassword={setPassword}
+                onSubmit={handleSubmit}
+            />
+            {error && <ErrorMessage>{error}</ErrorMessage>}
         </Container>
     );
 };
