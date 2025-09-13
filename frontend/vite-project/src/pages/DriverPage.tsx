@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import type { IOrder, ICacamba } from '../interfaces';
 import CacambaForm from '../components/CacambaForm';
 import CacambaList from '../components/CacambaList';
-import EditCacambaModal from '../components/EditCacambaModal'; // Crie este componente conforme instrução abaixo
+import EditCacambaModal from './EditCacambaModal'; // Supondo que este modal exista
 import { io } from 'socket.io-client';
 
 // Estilos
@@ -119,6 +119,7 @@ const DriverPage: React.FC = () => {
   const [selectedOrderType, setSelectedOrderType] = useState<'entrega' | 'retirada' | 'troca' | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [editingCacamba, setEditingCacamba] = useState<ICacamba | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Defina a apiUrl aqui, lendo do .env
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -194,7 +195,6 @@ const DriverPage: React.FC = () => {
 
   const handleCompleteOrder = async (orderId: string) => {
     try {
-      // A authenticatedFetch já adiciona o token, então não precisa dele aqui
       const response = await authenticatedFetch(`${apiUrl}/driver/orders/${orderId}/complete`, {
         method: 'PATCH',
       });
@@ -297,7 +297,7 @@ const DriverPage: React.FC = () => {
                         cacambas={order.cacambas || []}
                         onImageClick={setModalImage}
                         onEdit={handleOpenEditModal} // Passe a função correta
-                        onDelete={handleDeleteCacamba}
+                        onDelete={(cacambaId) => handleDeleteCacamba(cacambaId, order._id)}
                       />
                     </CacambaSection>
                     {/* Botão para concluir pedido - só aparece se regra for satisfeita */}
@@ -328,11 +328,15 @@ const DriverPage: React.FC = () => {
 
       {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
 
-      {editingCacamba && (
+      {isEditModalOpen && editingCacamba && (
         <EditCacambaModal
           cacamba={editingCacamba}
-          onClose={() => setEditingCacamba(null)}
-          onSave={handleUpdateCacamba}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdate={(updatedData) => {
+            if (editingCacamba?._id) {
+              handleUpdateCacamba(editingCacamba._id, updatedData);
+            }
+          }}
         />
       )}
     </DriverContainer>
