@@ -78,14 +78,14 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
       <ModalContent>
         <Title>Editar Caçamba #{cacamba.numero}</Title>
         <Form onSubmit={handleSubmit}>
-          <FormGroup>
+          {/* <FormGroup>
             <Label>Status</Label>
             <Select name="status" value={formData.status} onChange={handleChange}>
               <option value="disponivel">Disponível</option>
               <option value="em_uso">Em Uso</option>
               <option value="manutencao">Manutenção</option>
             </Select>
-          </FormGroup>
+          </FormGroup> */}
           <FormGroup>
             <Label>Local</Label>
             <Select name="local" value={formData.local} onChange={handleChange}>
