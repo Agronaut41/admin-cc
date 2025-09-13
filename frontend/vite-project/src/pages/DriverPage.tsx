@@ -237,12 +237,11 @@ const DriverPage: React.FC = () => {
   };
 
   // Handler para excluir caçamba
-  const handleDeleteCacamba = async (cacambaId: string, orderId: string) => {
+  const handleDeleteCacamba = async (cacambaId: string) => {
     if (!window.confirm('Deseja realmente excluir esta caçamba?')) return;
-    await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, { // Use a variável aqui
+    await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, {
       method: 'DELETE',
     });
-    // Atualize os pedidos após exclusão
     fetchDriverOrders();
   };
 
@@ -297,7 +296,7 @@ const DriverPage: React.FC = () => {
                         cacambas={order.cacambas || []}
                         onImageClick={setModalImage}
                         onEdit={handleOpenEditModal} // Passe a função correta
-                        onDelete={(cacambaId) => handleDeleteCacamba(cacambaId, order._id)}
+                        onDelete={handleDeleteCacamba}
                       />
                     </CacambaSection>
                     {/* Botão para concluir pedido - só aparece se regra for satisfeita */}

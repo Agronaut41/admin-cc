@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react'; // Remova 'useEffect' daqui
 import styled from 'styled-components';
 import type { ICacamba } from '../interfaces';
 
@@ -52,7 +52,6 @@ interface EditCacambaModalProps {
 const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
     numero: cacamba.numero,
-    status: cacamba.status,
     local: cacamba.local,
   });
   const [image, setImage] = useState<File | null>(null);
