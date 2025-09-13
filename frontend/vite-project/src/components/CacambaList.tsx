@@ -116,6 +116,7 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
       </EmptyState>
     );
   }
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   return (
     <Container>
@@ -149,10 +150,10 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
             </InfoSection>
             <ImageContainer>
               <CacambaImage
-                src={`http://localhost:3001${cacamba.imageUrl}`}
+                src={`${apiUrl}${cacamba.imageUrl}`}
                 alt="Foto da caçamba"
                 style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
-                onClick={() => onImageClick && onImageClick(`http://localhost:3001${cacamba.imageUrl}`)}
+                onClick={() => onImageClick && onImageClick(`${apiUrl}${cacamba.imageUrl}`)}
               />
             </ImageContainer>
           </CardContent>

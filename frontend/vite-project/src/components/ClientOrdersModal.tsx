@@ -97,12 +97,13 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
   useEffect(() => {
     const fetchOrders = async () => {
       const query = new URLSearchParams();
+      const apiUrl = import.meta.env.VITE_API_URL;
       if (filters.startDate) query.append('startDate', filters.startDate);
       if (filters.endDate) query.append('endDate', filters.endDate);
       if (filters.type) query.append('type', filters.type);
       if (filters.local) query.append('local', filters.local);
 
-      const response = await fetch(`http://localhost:3001/clients/${client._id}/orders?${query.toString()}`, {
+      const response = await fetch(`${apiUrl}/clients/${client._id}/orders?${query.toString()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       });
       if (response.ok) {
@@ -117,6 +118,8 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   return (
     <ModalOverlay>
@@ -182,9 +185,9 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
                       {order.imageUrls.map((url, index) => (
                         <OrderImage
                           key={index}
-                          src={`http://localhost:3001${url}`}
+                          src={`${apiUrl}${url}`}
                           alt={`Imagem ${index + 1}`}
-                          onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                          onClick={() => setModalImage(`${apiUrl}${url}`)}
                         />
                       ))}
                     </ImageContainer>

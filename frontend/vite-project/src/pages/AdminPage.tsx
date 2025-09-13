@@ -244,6 +244,7 @@ const AdminPage: React.FC = () => {
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<IDriver | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   // Função auxiliar para fazer requisições autenticadas
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
@@ -273,11 +274,11 @@ const AdminPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const ordersResponse = await authenticatedFetch('http://localhost:3001/orders');
+      const ordersResponse = await authenticatedFetch(`${apiUrl}/orders`);
       const ordersData = await ordersResponse.json();
       setOrders(ordersData);
 
-      const driversResponse = await authenticatedFetch('http://localhost:3001/drivers');
+      const driversResponse = await authenticatedFetch(`${apiUrl}/drivers`);
       const driversData = await driversResponse.json();
       setDrivers(driversData);
 
@@ -292,7 +293,7 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const socket = io('http://localhost:3001');
+  const socket = io(apiUrl);
 
   useEffect(() => {
     fetchData();
@@ -309,7 +310,7 @@ const AdminPage: React.FC = () => {
   // Funções de Gerenciamento de Pedidos
   const handleUpdateOrder = async (orderId: string, updates: Partial<IOrder>) => {
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/orders/${orderId}`, {
+      const response = await authenticatedFetch(`${apiUrl}/orders/${orderId}`, {
         method: 'PATCH',
         body: JSON.stringify(updates),
       });
@@ -329,7 +330,7 @@ const AdminPage: React.FC = () => {
   const handleDeleteOrder = async (orderId: string) => {
     if (!window.confirm('Tem certeza que deseja excluir este pedido?')) return;
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/orders/${orderId}`, {
+      const response = await authenticatedFetch(`${apiUrl}/orders/${orderId}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -363,7 +364,7 @@ const AdminPage: React.FC = () => {
   const handleDeleteDriver = async (driverId: string) => {
     if (!window.confirm('Tem certeza que deseja excluir este motorista? Todos os pedidos associados precisarão ser reatribuídos.')) return;
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/drivers/${driverId}`, {
+      const response = await authenticatedFetch(`${apiUrl}/drivers/${driverId}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -451,9 +452,9 @@ const AdminPage: React.FC = () => {
                             {order.imageUrls.map((url, index) => (
                               <OrderImage
                                 key={index}
-                                src={`http://localhost:3001${url}`}
+                                src={`${apiUrl}${url}`}
                                 alt={`Imagem ${index + 1}`}
-                                onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                                onClick={() => setModalImage(`${apiUrl}${url}`)}
                                 style={{ cursor: 'pointer' }}
                               />
                             ))}
@@ -530,9 +531,9 @@ const AdminPage: React.FC = () => {
                                 {order.imageUrls.map((url, index) => (
                                   <OrderImage
                                     key={index}
-                                    src={`http://localhost:3001${url}`}
+                                    src={`${apiUrl}${url}`}
                                     alt={`Imagem ${index + 1}`}
-                                    onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                                    onClick={() => setModalImage(`${apiUrl}${url}`)}
                                     style={{ cursor: 'pointer' }}
                                   />
                                 ))}
@@ -587,9 +588,9 @@ const AdminPage: React.FC = () => {
                                 {order.imageUrls.map((url, index) => (
                                   <OrderImage
                                     key={index}
-                                    src={`http://localhost:3001${url}`}
+                                    src={`${apiUrl}${url}`}
                                     alt={`Imagem ${index + 1}`}
-                                    onClick={() => setModalImage(`http://localhost:3001${url}`)}
+                                    onClick={() => setModalImage(`${apiUrl}${url}`)}
                                     style={{ cursor: 'pointer' }}
                                   />
                                 ))}

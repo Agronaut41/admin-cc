@@ -174,9 +174,10 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
       formData.append('tipo', tipo);
       formData.append('local', local); // Envia o novo campo
       formData.append('image', image);
+      const apiUrl = import.meta.env.VITE_API_URL;
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/driver/orders/${orderId}/cacambas`, {
+      const response = await fetch(`${apiUrl}/driver/orders/${orderId}/cacambas`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

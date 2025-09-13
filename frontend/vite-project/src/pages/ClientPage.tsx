@@ -45,10 +45,11 @@ const ClientPage: React.FC = () => {
   // Novos estados para o modal de pedidos
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('http://localhost:3001/clients', {
+      const response = await fetch(`${apiUrl}/clients`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -73,7 +74,7 @@ const ClientPage: React.FC = () => {
 
   const handleAddClient = async (clientData: Omit<IClient, '_id'>) => {
     try {
-      const response = await fetch('http://localhost:3001/clients', {
+      const response = await fetch(`${apiUrl}/clients`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +98,7 @@ const ClientPage: React.FC = () => {
     if (!editingClient) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/clients/${editingClient._id}`, {
+      const response = await fetch(`${apiUrl}/clients/${editingClient._id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +121,7 @@ const ClientPage: React.FC = () => {
 
   const handleDeleteClient = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/clients/${id}`, {
+      const response = await fetch(`${apiUrl}/clients/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

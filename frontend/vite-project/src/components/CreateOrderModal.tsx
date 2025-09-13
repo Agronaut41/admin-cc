@@ -70,11 +70,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     motorista: '',
   });
   const [error, setError] = useState('');
+  const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const fetchClients = async () => {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/clients', {
+      const response = await fetch(`${apiUrl}/clients`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -121,7 +122,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     }
 
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:3001/orders', {
+    const response = await fetch(`${apiUrl}/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

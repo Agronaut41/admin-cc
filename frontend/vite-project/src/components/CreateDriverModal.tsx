@@ -107,6 +107,8 @@ const CreateDriverModal: React.FC<CreateDriverModalProps> = ({ onClose, onDriver
     return response;
   };
 
+  const apiUrl = import.meta.env.VITE_API_URL;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (editingDriver) {
@@ -116,7 +118,7 @@ const CreateDriverModal: React.FC<CreateDriverModalProps> = ({ onClose, onDriver
         updates.password = password;
       }
       try {
-        const response = await authenticatedFetch(`http://localhost:3001/drivers/${editingDriver._id}`, {
+        const response = await authenticatedFetch(`${apiUrl}/drivers/${editingDriver._id}`, {
           method: 'PATCH',
           body: JSON.stringify(updates),
         });
@@ -135,7 +137,7 @@ const CreateDriverModal: React.FC<CreateDriverModalProps> = ({ onClose, onDriver
     } else {
       // Lógica de criação
       try {
-        const response = await authenticatedFetch('http://localhost:3001/drivers', {
+        const response = await authenticatedFetch(`${apiUrl}/drivers`, {
           method: 'POST',
           body: JSON.stringify({ username, password }),
         });
