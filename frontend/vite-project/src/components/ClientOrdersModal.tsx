@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import type { IClient, IOrder } from '../interfaces';
 import CacambaList from './CacambaList'; // Importe o CacambaList
+import ImageModal from './ImageModal'; // Verifique se este arquivo existe
 
 const ModalOverlay = styled.div`
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -119,7 +120,7 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
 
   return (
     <ModalOverlay>
-      
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
       <ModalContent>
         <ModalHeader>
           <Title>Pedidos de {client.clientName}</Title>
@@ -169,7 +170,7 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
                   <CacambaSection>
                     <CacambaList
                       cacambas={order.cacambas || []}
-                      onImageClick={setModalImage}
+                      onImageClick={setModalImage} // Passe a função aqui
                     />
                   </CacambaSection>
                 )}

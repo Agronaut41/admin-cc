@@ -45,7 +45,8 @@ const OrdersGrid = styled.div`
   }
 `;
 
-const OrderCard = styled.div`
+// Defina o tipo para o styled-component OrderCard
+const OrderCard = styled.div<{ status: string }>`
   background-color: white;
   border-left: 5px solid #3b82f6;
   border-radius: 8px;
@@ -118,8 +119,10 @@ const DriverPage: React.FC = () => {
   const [selectedOrderType, setSelectedOrderType] = useState<'entrega' | 'retirada' | 'troca' | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [editingCacamba, setEditingCacamba] = useState<ICacamba | null>(null);
-
-  const socket = io('http://localhost:3001'); // ajuste a URL se necessário
+  
+  // Defina a apiUrl aqui, lendo do .env
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const socket = io(apiUrl); // Use a variável aqui
 
   const authenticatedFetch = async (url: string, options?: RequestInit) => {
     const token = localStorage.getItem('token');
@@ -145,7 +148,7 @@ const DriverPage: React.FC = () => {
   const fetchDriverOrders = async () => {
     setLoading(true);
     try {
-      const response = await authenticatedFetch('http://localhost:3001/driver/orders');
+      const response = await authenticatedFetch(`${apiUrl}/driver/orders`); // Use a variável aqui
       const data = await response.json();
       setOrders(data);
     } catch (error) {
@@ -181,7 +184,7 @@ const DriverPage: React.FC = () => {
       formData.append('image', updatedCacamba.image);
     }
 
-    await authenticatedFetch(`http://localhost:3001/cacambas/${cacambaId}`, {
+    await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, { // Use a variável aqui
       method: 'PATCH',
       body: formData,
     });
@@ -190,11 +193,10 @@ const DriverPage: React.FC = () => {
   };
 
   const handleCompleteOrder = async (orderId: string) => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:3001/driver/orders/${orderId}/complete`, {
+      // A authenticatedFetch já adiciona o token, então não precisa dele aqui
+      const response = await authenticatedFetch(`${apiUrl}/driver/orders/${orderId}/complete`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
         fetchDriverOrders();
@@ -237,11 +239,16 @@ const DriverPage: React.FC = () => {
   // Handler para excluir caçamba
   const handleDeleteCacamba = async (cacambaId: string, orderId: string) => {
     if (!window.confirm('Deseja realmente excluir esta caçamba?')) return;
-    await authenticatedFetch(`http://localhost:3001/cacambas/${cacambaId}`, {
+    await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, { // Use a variável aqui
       method: 'DELETE',
     });
     // Atualize os pedidos após exclusão
     fetchDriverOrders();
+  };
+
+  const handleOpenEditModal = (cacamba: ICacamba) => {
+    setEditingCacamba(cacamba);
+    setIsEditModalOpen(true);
   };
 
   if (loading) return <DriverContainer>Carregando pedidos...</DriverContainer>;
@@ -289,8 +296,8 @@ const DriverPage: React.FC = () => {
                       <CacambaList
                         cacambas={order.cacambas || []}
                         onImageClick={setModalImage}
-                        onEdit={order.status !== 'concluido' ? setEditingCacamba : undefined}
-                        onDelete={order.status !== 'concluido' ? (cacambaId) => handleDeleteCacamba(cacambaId, order._id) : undefined}
+                        onEdit={handleOpenEditModal} // Passe a função correta
+                        onDelete={handleDeleteCacamba}
                       />
                     </CacambaSection>
                     {/* Botão para concluir pedido - só aparece se regra for satisfeita */}

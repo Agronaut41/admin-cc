@@ -77,8 +77,8 @@ interface Props {
 }
 
 const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
-  const [formData, setFormData] = useState<Omit<IClient, '_id'>>({
-    name: '',
+  const [formData, setFormData] = useState({
+    clientName: '', // Alterado de 'name' para 'clientName'
     contactName: '',
     contactNumber: '',
     neighborhood: '',
@@ -88,7 +88,14 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        clientName: initialData.clientName || '', // Alterado de 'name' para 'clientName'
+        contactName: initialData.contactName || '',
+        contactNumber: initialData.contactNumber || '',
+        neighborhood: initialData.neighborhood || '',
+        address: initialData.address || '',
+        addressNumber: initialData.addressNumber || '',
+      });
     }
   }, [initialData]);
 
@@ -106,12 +113,12 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
     <FormContainer>
       <Form onSubmit={handleSubmit}>
         <FormGroup>
-          <Label htmlFor="name">Nome do Cliente</Label>
+          <Label htmlFor="clientName">Nome do Cliente</Label>
           <Input
-            id="name"
-            name="name"
+            id="clientName"
+            name="clientName" // O 'name' do input deve corresponder ao estado
             type="text"
-            value={formData.name}
+            value={formData.clientName} // Use formData.clientName
             onChange={handleChange}
             required
           />
