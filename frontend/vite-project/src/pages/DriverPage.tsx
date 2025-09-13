@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import type { IOrder, ICacamba } from '../interfaces';
 import CacambaForm from '../components/CacambaForm';
 import CacambaList from '../components/CacambaList';
-import EditCacambaModal from './EditCacambaModal'; // Supondo que este modal exista
+import EditCacambaModal from './EditCacambaModal';
 import { io } from 'socket.io-client';
 
 // Estilos
@@ -332,7 +332,7 @@ const DriverPage: React.FC = () => {
         <EditCacambaModal
           cacamba={editingCacamba}
           onClose={() => setIsEditModalOpen(false)}
-          onUpdate={(updatedData) => {
+          onUpdate={(updatedData: Partial<ICacamba> & { image?: File | null }) => {
             if (editingCacamba?._id) {
               handleUpdateCacamba(editingCacamba._id, updatedData);
             }
