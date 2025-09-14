@@ -32,6 +32,7 @@ const CardContent = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin-bottom: 1.5rem;
 `;
 
 const InfoSection = styled.div`
@@ -82,7 +83,7 @@ const ActionButton = styled.button<{ color?: string }>`
   border: none;
   border-radius: 4px;
   padding: 0.4rem 0.9rem;
-  margin-left: 8px;
+  margin-right: 8px;
   font-size: 0.95rem;
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;

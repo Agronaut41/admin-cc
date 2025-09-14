@@ -57,6 +57,7 @@ const Input = styled.input`
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   font-size: 1rem;
+      width: -webkit-fill-available;
   
   &:focus {
     outline: none;
