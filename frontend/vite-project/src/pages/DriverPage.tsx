@@ -120,6 +120,8 @@ const DriverPage: React.FC = () => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [editingCacamba, setEditingCacamba] = useState<ICacamba | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // ADICIONE um estado para guardar o tipo do pedido em edição
+  const [editingOrderType, setEditingOrderType] = useState<'entrega' | 'retirada' | 'troca' | undefined>(undefined);
   
   // Defina a apiUrl aqui, lendo do .env
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -245,8 +247,9 @@ const DriverPage: React.FC = () => {
     fetchDriverOrders();
   };
 
-  const handleOpenEditModal = (cacamba: ICacamba) => {
+  const handleOpenEditModal = (cacamba: ICacamba, orderType: 'entrega' | 'retirada' | 'troca') => {
     setEditingCacamba(cacamba);
+    setEditingOrderType(orderType);
     setIsEditModalOpen(true);
   };
 
@@ -295,7 +298,7 @@ const DriverPage: React.FC = () => {
                       <CacambaList
                         cacambas={order.cacambas || []}
                         onImageClick={setModalImage}
-                        onEdit={handleOpenEditModal} // Passe a função correta
+                        onEdit={(cacamba) => handleOpenEditModal(cacamba, order.type)} // PASSA order.type
                         onDelete={handleDeleteCacamba}
                       />
                     </CacambaSection>
@@ -330,10 +333,11 @@ const DriverPage: React.FC = () => {
       {isEditModalOpen && editingCacamba && (
         <EditCacambaModal
           cacamba={editingCacamba}
-          onClose={() => setIsEditModalOpen(false)}
-          onUpdate={(updatedData: Partial<ICacamba> & { image?: File | null }) => {
-            if (editingCacamba?._id) {
-              handleUpdateCacamba(editingCacamba._id, updatedData);
+          orderType={editingOrderType} // PASSA para o modal
+          onClose={() => { setIsEditModalOpen(false); setEditingOrderType(undefined); }}
+          onUpdate={(updated) => {
+            if (editingCacamba._id) {
+              handleUpdateCacamba(editingCacamba._id, updated);
             }
           }}
         />
