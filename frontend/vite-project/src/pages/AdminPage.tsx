@@ -6,6 +6,7 @@ import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';
 import ClientPage from './ClientPage';
 import { io } from 'socket.io-client';
+import { downloadOrderPdf } from '../utils/orderPdf'; // ADIÇÃO
 
 // ==========================================================
 // ESTILOS
@@ -227,6 +228,26 @@ const SelectInput = styled.select`
   padding: 0.5rem;
   border-radius: 4px;
   border: 1px solid #ddd;
+`;
+
+const ButtonsRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const ActionButton = styled.button`
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #2563eb;
+  }
 `;
 
 // ==========================================================
@@ -597,18 +618,17 @@ const AdminPage: React.FC = () => {
                               </ImageContainer>
                             </div>
                           )}
-                          {/* Botões de prioridade removidos para pedidos concluídos */}
                           <ButtonGroup>
-                            {/* <SelectInput
-                              value={order.motorista?._id || ''}
-                              onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
-                            >
-                              <option value="">Desatribuir</option>
-                              {drivers.map(d => (
-                                <option key={d._id} value={d._id}>{d.username}</option>
-                              ))}
-                            </SelectInput> */}
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                            {order.status === 'concluido' && (
+                              <ActionButton
+                                type="button"
+                                onClick={() => downloadOrderPdf(order)}
+                                style={{ background: '#2563eb' }}
+                              >
+                                Baixar Pedido
+                              </ActionButton>
+                            )}
                           </ButtonGroup>
                         </OrderCard>
                       ))}
