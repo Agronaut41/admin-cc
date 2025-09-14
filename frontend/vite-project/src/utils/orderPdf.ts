@@ -6,12 +6,14 @@ export function downloadOrderPdf(order: IOrder) {
   const doc = new jsPDF();
   const fmt = (d?: string) => (d ? new Date(d).toLocaleString('pt-BR') : '-');
 
+  // Determina número do pedido (fallback)
   const orderNumber =
     (order as any).numeroPedido ||
     (order as any).numero ||
     (order as any).orderNumber ||
     order._id;
 
+  // Tabela principal (dados do pedido)
   autoTable(doc, {
     head: [['Campo', 'Valor']],
     body: [
@@ -28,61 +30,58 @@ export function downloadOrderPdf(order: IOrder) {
       ['Criado em', fmt(order.createdAt as any)],
       ['Finalizado em', fmt(order.updatedAt as any)]
     ],
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [37, 99, 235] }
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [37, 99, 235] },
+    margin: { top: 12, right: 10, left: 10 }
   });
 
+  // Resumo das caçambas na MESMA página (sem addPage)
   if (order.cacambas?.length) {
-    doc.addPage();
-    doc.setFontSize(14);
-    doc.text('Caçambas (Resumo)', 14, 18);
+    const startY = (doc as any).lastAutoTable.finalY + 6;
 
-    // Campos solicitados: número, quando registrada, local, retirada/entrega
-    autoTable(doc, {
-      startY: 24,
-      head: [['#', 'Número', 'Registrada em', 'Local', 'Tipo']],
-      body: order.cacambas.map((c: ICacamba, i) => [
-        String(i + 1),
-        c.numero || '-',
-        fmt(c.createdAt as any),
-        c.local || '-',
-        c.tipo || '-'
-      ]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [16, 185, 129] }
-    });
+    // Ajuste de fonte se muitas caçambas
+    const total = order.cacambas.length;
+    const fontSize = total > 12 ? 7 : total > 8 ? 8 : 9;
 
-    // Detalhes individuais (apenas os campos solicitados)
-    let y = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(14);
-    doc.text('Caçambas (Detalhes)', 14, y);
-    y += 6;
-
-    order.cacambas.forEach((c: ICacamba, index: number) => {
-      if (y > 260) {
-        doc.addPage();
-        y = 20;
-      }
+    // Detalhes individuais condensados em uma tabela só (para não gerar múltiplas)
+    const afterSummaryY = (doc as any).lastAutoTable.finalY + 4;
+    if (afterSummaryY < 285) {
+      // margem extra acima do título (antes era afterSummaryY - 2)
+      const detailsTitleY = afterSummaryY + 8; // aumenta o espaço
       doc.setFontSize(11);
-      doc.text(`Caçamba ${index + 1}`, 14, y);
-      y += 4;
+      doc.text('Detalhes Individuais', 10, detailsTitleY);
 
-      autoTable(doc, {
-        startY: y,
-        head: [['Campo', 'Valor']],
-        body: [
-          ['Número', c.numero || '-'],
-          ['Registrada em', fmt(c.createdAt as any)],
-          ['Local', c.local || '-'],
-          ['Tipo', c.tipo || '-']
-        ],
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [99, 102, 241] },
-        margin: { left: 14, right: 14 }
+      const detailsBody: string[][] = [];
+      order.cacambas.forEach((c: ICacamba, i) => {
+        detailsBody.push([`Caçamba ${i + 1}`, '']);
+        detailsBody.push(['Número', c.numero || '-']);
+        detailsBody.push(['Registrada em', fmt(c.createdAt as any)]);
+        detailsBody.push(['Local', c.local || '-']);
+        detailsBody.push(['Tipo', c.tipo || '-']);
+        detailsBody.push(['', '']);
       });
 
-      y = (doc as any).lastAutoTable.finalY + 8;
-    });
+      const estimatedHeight = detailsBody.length * 4;
+      const tableStartY = detailsTitleY + 4; // inicia tabela abaixo do título com espaçamento
+      if (tableStartY + estimatedHeight < 295) {
+        autoTable(doc, {
+          startY: tableStartY,
+          head: [['Campo', 'Valor']],
+          body: detailsBody,
+          styles: { fontSize: fontSize - 1 <= 6 ? 6 : fontSize - 1, cellPadding: 1 },
+          headStyles: { fillColor: [99, 102, 241] },
+          margin: { right: 10, left: 10 },
+          pageBreak: 'avoid'
+        });
+      } else {
+        doc.setFontSize(8);
+        doc.text(
+          'Detalhes individuais omitidos para manter em uma única página.',
+          10,
+          detailsTitleY + 6
+        );
+      }
+    }
   }
 
   doc.save(`pedido_${orderNumber}.pdf`);
