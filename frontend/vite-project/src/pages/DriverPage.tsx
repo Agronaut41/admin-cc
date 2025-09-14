@@ -173,26 +173,35 @@ const DriverPage: React.FC = () => {
     };
   }, []);
 
-  const handleUpdateCacamba = async (cacambaId: string, updatedCacamba: Partial<ICacamba> & { image?: File | null }) => {
-    const formData = new FormData();
-    
-    // Use Object.entries para iterar sobre as propriedades
-    Object.entries(updatedCacamba).forEach(([key, value]) => {
-      if (key !== 'image' && value !== undefined) {
-        formData.append(key, value as string);
-      }
+  const handleUpdateCacamba = async (cacambaId: string, updated: Partial<ICacamba> & { image?: File | null }) => {
+    const fd = new FormData();
+    Object.entries(updated).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && k !== 'image') fd.append(k, String(v));
+    });
+    if (updated.image) fd.append('image', updated.image);
+
+    const resp = await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, {
+      method: 'PATCH',
+      body: fd
     });
 
-    if (updatedCacamba.image) {
-      formData.append('image', updatedCacamba.image);
+    if (!resp.ok) {
+      console.error('Falha ao atualizar caçamba');
+      return;
     }
 
-    await authenticatedFetch(`${apiUrl}/cacambas/${cacambaId}`, { // Use a variável aqui
-      method: 'PATCH',
-      body: formData,
-    });
-    setEditingCacamba(null);
-    fetchDriverOrders();
+    const data = await resp.json();
+    const updatedCacamba: ICacamba = data.cacamba || data;
+
+    // MERGE preservando campos existentes (inclusive local)
+    setOrders(prev =>
+      prev.map(o => ({
+        ...o,
+        cacambas: o.cacambas?.map(c =>
+          c._id === cacambaId ? { ...c, ...updatedCacamba } : c
+        )
+      }))
+    );
   };
 
   const handleCompleteOrder = async (orderId: string) => {

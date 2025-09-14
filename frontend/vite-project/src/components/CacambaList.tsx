@@ -137,15 +137,15 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
               <DateInfo>
                 Registrada em: {new Date(cacamba.createdAt).toLocaleString('pt-BR')}
               </DateInfo>
-              {/* Exibe o local em texto para o admin */}
-              {'local' in cacamba && (
+
+              {cacamba.local && (
                 <LocalInfo>
                   <strong>Local:</strong>{' '}
                   {cacamba.local === 'via_publica'
                     ? 'Via pública'
                     : cacamba.local === 'canteiro_obra'
                       ? 'Canteiro de obra'
-                      : ''}
+                      : cacamba.local}
                 </LocalInfo>
               )}
             </InfoSection>
