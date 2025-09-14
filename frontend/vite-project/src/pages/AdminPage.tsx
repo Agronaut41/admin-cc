@@ -202,12 +202,6 @@ const SectionContainer = styled.div`
   margin-bottom: 2rem;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.8rem;
-`;
-
 const PriorityButton = styled(Button)`
   padding: 0.5rem;
 `;

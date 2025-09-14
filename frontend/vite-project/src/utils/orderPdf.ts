@@ -37,8 +37,6 @@ export function downloadOrderPdf(order: IOrder) {
 
   // Resumo das caçambas na MESMA página (sem addPage)
   if (order.cacambas?.length) {
-    const startY = (doc as any).lastAutoTable.finalY + 6;
-
     // Ajuste de fonte se muitas caçambas
     const total = order.cacambas.length;
     const fontSize = total > 12 ? 7 : total > 8 ? 8 : 9;
