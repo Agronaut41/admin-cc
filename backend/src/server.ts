@@ -401,44 +401,52 @@ app.get('/driver/orders', authenticateToken, isDriver, async (req: Authenticated
 
 // Registrar caçamba para um pedido
 app.post('/driver/orders/:id/cacambas', authenticateToken, isDriver, upload.single('image'), async (req: AuthenticatedRequest, res) => {
-    const { id } = req.params;
-    const { numero, tipo, local } = req.body; // inclua local
-    const file = req.file;
-    
-    // Verifique se o pedido pertence ao motorista logado
-    const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
-    if (!order) {
-        return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
-    }
+  const { id } = req.params;
+  const { numero, tipo, local } = req.body;
+  const file = req.file;
 
-    if (!file) {
-        return res.status(400).json({ message: 'Imagem é obrigatória.' });
-    }
+  // Verifica se o pedido pertence ao motorista logado
+  const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
+  if (!order) {
+    return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+  }
 
+  if (!file) {
+    return res.status(400).json({ message: 'Imagem é obrigatória.' });
+  }
+
+  // Ajuste do tipo de caçamba
+  let finalTipo: 'entrega' | 'retirada';
+  if (order.type === 'retirada') {
+    finalTipo = 'retirada';
+  } else if (order.type === 'entrega') {
+    finalTipo = 'entrega';
+  } else { // 'troca' ou outros casos
+    finalTipo = (tipo === 'retirada') ? 'retirada' : 'entrega';
+  }
+
+  try {
     const imageUrl = `/uploads/${file.filename}`;
+    const newCacamba = new CacambaModel({
+      numero,
+      tipo: finalTipo,
+      local,
+      imageUrl,
+      orderId: id
+    });
 
-    try {
-        const newCacamba = new CacambaModel({
-            numero,
-            tipo,
-            local, // inclua local
-            imageUrl,
-            orderId: id
-        });
-        
-        await newCacamba.save();
-        
-        // Adicionar a caçamba ao pedido
-        await OrderModel.findByIdAndUpdate(id, {
-            $push: { cacambas: newCacamba._id },
-            updatedAt: Date.now()
-        });
-        
-        return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba: newCacamba });
-    } catch (error) {
-        console.error('Erro ao registrar caçamba:', error);
-        return res.status(500).json({ message: 'Erro interno do servidor.' });
-    }
+    await newCacamba.save();
+
+    await OrderModel.findByIdAndUpdate(id, {
+      $push: { cacambas: newCacamba._id },
+      updatedAt: Date.now()
+    });
+
+    return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba: newCacamba });
+  } catch (error) {
+    console.error('Erro ao registrar caçamba:', error);
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
 });
 
 // Obter caçambas de um pedido
