@@ -1,93 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { jwtDecode } from 'jwt-decode';
-import { useNavigate } from 'react-router-dom'; // Importe useNavigate
-
-// O componente de formulário que você já tem
+import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/LoginForm';
 
-// Estilos
 const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #f3f4f6;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  background:#f3f4f6;
 `;
 
 const ErrorMessage = styled.p`
-  color: #ef4444;
-  text-align: center;
-  margin-top: 1rem;
+  color:#ef4444;
+  text-align:center;
+  margin-top:1rem;
 `;
 
 interface JwtPayload {
-    userId: string;
-    role: 'admin' | 'motorista';
+  userId: string;
+  role: 'admin' | 'motorista';
+  exp?: number;
 }
 
 const LoginPage: React.FC = () => {
-    const navigate = useNavigate(); // Inicializa o hook de navegação
+  const navigate = useNavigate();
 
-    const [username, setUsername] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-    const [error, setError] = useState<string | null>(null);
-    const apiUrl = import.meta.env.VITE_API_URL;
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]     = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null); // Limpa o erro anterior
+  const apiUrl = import.meta.env.VITE_API_URL;
 
-        try {
-            // Requisição para o backend
-            const response = await fetch(`${apiUrl}/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
+  // Bootstrap da sessão (executa ao abrir / recarregar a página)
+  useEffect(() => {
+    const token  = localStorage.getItem('token');
+    const expStr = localStorage.getItem('token_expires_at');
+    if (!token || !expStr) return;
 
-            const data = await response.json();
+    const expMs = Number(expStr);
+    if (Number.isNaN(expMs) || expMs <= Date.now()) {
+      // expirado ou inválido
+      clearSession();
+      return;
+    }
 
-            if (response.ok) {
-                // Login bem-sucedido
-                const decodedToken = jwtDecode<JwtPayload>(data.token);
-                
-                // Salve o token para futuras requisições
-                localStorage.setItem('token', data.token);
+    // Token válido: redirecionar automaticamente
+    try {
+      const decoded = jwtDecode<JwtPayload>(token);
+      if (decoded.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (decoded.role === 'motorista') {
+        navigate('/motorista', { replace: true });
+      }
+    } catch {
+      clearSession();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-                // Redireciona o usuário com base no papel
-                if (decodedToken.role === 'admin') {
-                    alert('Login de Administrador bem-sucedido! Redirecionando para o painel de administração...');
-                    navigate('/admin'); // Redireciona para a rota '/admin'
-                } else if (decodedToken.role === 'motorista') {
-                    alert('Login de Motorista bem-sucedido! Redirecionando para a rota de trabalho...');
-                    navigate('/motorista');
-                }
+  // Logout automático quando expirar (verifica a cada 60s)
+  useEffect(() => {
+    const id = setInterval(() => {
+      const expStr = localStorage.getItem('token_expires_at');
+      if (expStr && Number(expStr) <= Date.now()) {
+        clearSession();
+        // Se o usuário estiver em rota protegida, pode redirecionar para /login
+      }
+    }, 60000);
+    return () => clearInterval(id);
+  }, []);
 
-            } else {
-                // Login falhou
-                setError(data.message || 'Falha no login. Verifique suas credenciais.');
-            }
-        } catch (err) {
-            setError('Ocorreu um erro na requisição. Tente novamente mais tarde.');
-        }
-    };
+  const clearSession = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('token_expires_at');
+  };
 
-    return (
-        <Container>
-            <LoginForm
-                username={username}
-                password={password}
-                setUsername={setUsername}
-                setPassword={setPassword}
-                onSubmit={handleSubmit}
-            />
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-        </Container>
-    );
+  // ÚNICA função de login
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const resp = await fetch(`${apiUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data.token) {
+        setError(data.message || 'Falha no login.');
+        setLoading(false);
+        return;
+      }
+
+      // Persistência 30 dias
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      localStorage.setItem('token_expires_at', String(expiresAt));
+
+      let decoded: JwtPayload | null = null;
+      try {
+        decoded = jwtDecode<JwtPayload>(data.token);
+      } catch {
+        setError('Token inválido.');
+        clearSession();
+        setLoading(false);
+        return;
+      }
+
+      if (decoded.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (decoded.role === 'motorista') {
+        navigate('/motorista', { replace: true });
+      } else {
+        setError('Papel inválido.');
+        clearSession();
+      }
+
+    } catch {
+      setError('Erro de conexão.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Container>
+      <LoginForm
+        username={username}
+        password={password}
+        setUsername={setUsername}
+        setPassword={setPassword}
+        onSubmit={handleSubmit}
+        loading={loading}
+      />
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+    </Container>
+  );
 };
 
 export default LoginPage;

@@ -100,8 +100,8 @@ const isDriver = (req: AuthenticatedRequest, res: express.Response, next: expres
 // ROTA DE LOGIN
 // ==========================================================
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    try {
+  const { username, password } = req.body;
+  try {
         const user = await UserModel.findOne({ username });
         if (!user || user.password !== password) {
             return res.status(401).json({ message: 'Credenciais inválidas.' });
@@ -115,13 +115,17 @@ app.post('/login', async (req, res) => {
 
         const token = jwt.sign(
             { userId: user._id, role: user.role },
-            JWT_SECRET, // Agora o TypeScript sabe que JWT_SECRET é uma string
-            { expiresIn: '1h' }
+            JWT_SECRET,
+            { expiresIn: '30d' } // alterado de '8h' (ou similar) para 30 dias
         );
-        return res.status(200).json({ message: 'Login bem-sucedido!', token, role: user.role });
-    } catch (error) {
-        console.error('Erro no login:', error);
-        return res.status(500).json({ message: 'Erro interno do servidor.' });
+
+        return res.json({
+          token,
+          role: user.role,
+          expiresIn: 30 * 24 * 60 * 60 // em segundos (informativo)
+        });
+    } catch (e) {
+        return res.status(500).json({ message: 'Erro interno' });
     }
 });
 
