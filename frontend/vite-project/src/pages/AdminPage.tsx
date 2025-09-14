@@ -230,11 +230,6 @@ const SelectInput = styled.select`
   border: 1px solid #ddd;
 `;
 
-const ButtonsRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
 const ActionButton = styled.button`
   background-color: #3b82f6;
   color: white;
@@ -482,7 +477,7 @@ const AdminPage: React.FC = () => {
                           </ImageContainer>
                         </div>
                       )}
-                      <ButtonGroup>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                         <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
                         <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
                         <SelectInput
@@ -504,7 +499,7 @@ const AdminPage: React.FC = () => {
                           ))}
                         </SelectInput>
                         <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                      </ButtonGroup>
+                      </div>
                     </OrderCard>
                   ))}
                 </OrdersGrid>
@@ -561,7 +556,7 @@ const AdminPage: React.FC = () => {
                               </ImageContainer>
                             </div>
                           )}
-                          <ButtonGroup>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                             <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
                             <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
                             <SelectInput
@@ -574,7 +569,7 @@ const AdminPage: React.FC = () => {
                               ))}
                             </SelectInput>
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                          </ButtonGroup>
+                          </div>
                         </OrderCard>
                       ))}
                     </OrdersGrid>
@@ -618,7 +613,7 @@ const AdminPage: React.FC = () => {
                               </ImageContainer>
                             </div>
                           )}
-                          <ButtonGroup>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
                             {order.status === 'concluido' && (
                               <ActionButton
@@ -629,7 +624,7 @@ const AdminPage: React.FC = () => {
                                 Baixar Pedido
                               </ActionButton>
                             )}
-                          </ButtonGroup>
+                          </div>
                         </OrderCard>
                       ))}
                     </OrdersGrid>

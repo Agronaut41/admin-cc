@@ -74,51 +74,63 @@ const Button = styled.button`
 `;
 
 // Interface para as props
-interface LoginFormProps {
-    username: string;
-    password: string;
-    setUsername: (username: string) => void;
-    setPassword: (password: string) => void;
-    onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+export interface LoginFormProps {
+  username: string;
+  password: string;
+  setUsername: React.Dispatch<React.SetStateAction<string>>;
+  setPassword: React.Dispatch<React.SetStateAction<string>>;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  loading?: boolean; // ADICIONADO
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({
-    username,
-    password,
-    setUsername,
-    setPassword,
-    onSubmit,
+  username,
+  password,
+  setUsername,
+  setPassword,
+  onSubmit,
+  loading = false, // DEFAULT
 }) => {
-    return (
-        <FormWrapper>
-            <Title>Login</Title>
-            <Form onSubmit={onSubmit}>
-                <FormGroup>
-                    <Label htmlFor="username">Usuário</Label>
-                    <Input
-                        type="text"
-                        id="username"
-                        placeholder="Seu nome de usuário"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                    />
-                </FormGroup>
-                <FormGroup>
-                    <Label htmlFor="password">Senha</Label>
-                    <Input
-                        type="password"
-                        id="password"
-                        placeholder="************"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </FormGroup>
-                <Button type="submit">Entrar</Button>
-            </Form>
-        </FormWrapper>
-    );
+  return (
+    <FormWrapper>
+      <Title>Login</Title>
+      <Form onSubmit={onSubmit}>
+        <FormGroup>
+          <Label htmlFor="username">Usuário</Label>
+          <Input
+            type="text"
+            id="username"
+            placeholder="Seu nome de usuário"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </FormGroup>
+        <FormGroup>
+          <Label htmlFor="password">Senha</Label>
+          <Input
+            type="password"
+            id="password"
+            placeholder="************"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </FormGroup>
+        <Button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '12px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? 'Entrando...' : 'Entrar'}
+        </Button>
+      </Form>
+    </FormWrapper>
+  );
 };
 
 export default LoginForm;
