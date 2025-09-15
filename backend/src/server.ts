@@ -9,15 +9,17 @@ import { UserModel, IUser } from './models/User';
 import { OrderModel } from './models/Order';
 import { CacambaModel, ICacamba } from './models/Cacamba';
 import { ClientModel } from './models/Client';
-import multer from 'multer'; // Para lidar com upload de arquivos
-import path from 'path'; // Para lidar com caminhos de arquivos
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import multer from 'multer';
+import './gridfs';
+import { getBucket, uploadBufferToGridFS } from './gridfs'; // ADICIONADO
+import { ObjectId } from 'mongodb';
+import { createServer } from 'http';                 // ADICIONADO
+import { Server as SocketIOServer, Socket } from 'socket.io'; // ADICIONADO
 
 const app = express();
 const port = process.env.PORT || 3001;
-const server = http.createServer(app);
-const io = new SocketIOServer(server, {
+const server = createServer(app);                    // AJUSTADO
+const io = new SocketIOServer(server, {              // AJUSTADO
   cors: { origin: '*' }
 });
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -26,18 +28,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 connectDB();
 
 // Configurar o Multer para o upload de arquivos
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Salva os arquivos na pasta 'uploads'
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    },
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
-const upload = multer({ storage });
-
-// Servir a pasta de uploads estaticamente para que as imagens fiquem acessíveis
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Middlewares
 app.use(express.json());
@@ -404,54 +398,55 @@ app.get('/driver/orders', authenticateToken, isDriver, async (req: Authenticated
 });
 
 // Registrar caçamba para um pedido
-app.post('/driver/orders/:id/cacambas', authenticateToken, isDriver, upload.single('image'), async (req: AuthenticatedRequest, res) => {
-  const { id } = req.params;
-  const { numero, tipo, local } = req.body;
-  const file = req.file;
+app.post('/driver/orders/:id/cacambas',
+  authenticateToken,
+  isDriver,
+  upload.single('image'),
+  async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const { numero, tipo, local } = req.body;
 
-  // Verifica se o pedido pertence ao motorista logado
-  const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
-  if (!order) {
-    return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+    // Verifica pedido do motorista
+    const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
+    }
+
+    // Determina tipo final
+    let finalTipo: 'entrega' | 'retirada';
+    if (order.type === 'retirada') finalTipo = 'retirada';
+    else if (order.type === 'entrega') finalTipo = 'entrega';
+    else finalTipo = (tipo === 'retirada') ? 'retirada' : 'entrega';
+
+    try {
+      let imageUrl: string | undefined;
+      if (req.file) {
+        const fileId = await uploadBufferToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+        imageUrl = `/files/${fileId.toString()}`;
+      } else {
+        return res.status(400).json({ message: 'Imagem é obrigatória.' });
+      }
+
+      const cacamba = await CacambaModel.create({
+        numero,
+        tipo: finalTipo,
+        local,
+        orderId: order._id,
+        imageUrl
+      });
+
+      await OrderModel.findByIdAndUpdate(id, {
+        $push: { cacambas: cacamba._id },
+        updatedAt: Date.now()
+      });
+
+      return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba });
+    } catch (error) {
+      console.error('Erro ao registrar caçamba:', error);
+      return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
   }
-
-  if (!file) {
-    return res.status(400).json({ message: 'Imagem é obrigatória.' });
-  }
-
-  // Ajuste do tipo de caçamba
-  let finalTipo: 'entrega' | 'retirada';
-  if (order.type === 'retirada') {
-    finalTipo = 'retirada';
-  } else if (order.type === 'entrega') {
-    finalTipo = 'entrega';
-  } else { // 'troca' ou outros casos
-    finalTipo = (tipo === 'retirada') ? 'retirada' : 'entrega';
-  }
-
-  try {
-    const imageUrl = `/uploads/${file.filename}`;
-    const newCacamba = new CacambaModel({
-      numero,
-      tipo: finalTipo,
-      local,
-      imageUrl,
-      orderId: id
-    });
-
-    await newCacamba.save();
-
-    await OrderModel.findByIdAndUpdate(id, {
-      $push: { cacambas: newCacamba._id },
-      updatedAt: Date.now()
-    });
-
-    return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba: newCacamba });
-  } catch (error) {
-    console.error('Erro ao registrar caçamba:', error);
-    return res.status(500).json({ message: 'Erro interno do servidor.' });
-  }
-});
+);
 
 // Obter caçambas de um pedido
 app.get('/driver/orders/:id/cacambas', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
@@ -497,26 +492,38 @@ app.patch('/driver/orders/:id/complete', authenticateToken, isDriver, async (req
     }
 });
 
-// Editar caçamba (motorista)
-app.patch('/cacambas/:id', authenticateToken, isDriver, upload.single('image'), async (req, res) => {
-  try {
-    const update: any = {
-      numero: req.body.numero,
-      tipo: req.body.tipo,
-      local: req.body.local, // inclua local
-    };
-    if (req.file) {
-      update.imageUrl = '/uploads/' + req.file.filename;
-    }
-    const cacamba = await CacambaModel.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!cacamba) return res.status(404).json({ message: 'Caçamba não encontrada' });
-    res.json(cacamba);
-  } catch (err) {
-    res.status(500).json({ message: 'Erro ao editar caçamba' });
-  }
-});
+// Editar caçamba (motorista) – GRIDFS
+app.patch('/cacambas/:id',
+  authenticateToken,
+  isDriver,
+  upload.single('image'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { numero, tipo, local } = req.body;
 
-// Excluir caçamba (motorista)
+      const updates: any = {};
+      if (numero) updates.numero = numero;
+      if (tipo) updates.tipo = (tipo === 'retirada' ? 'retirada' : 'entrega');
+      if (local) updates.local = local;
+
+      if (req.file) {
+        const fileId = await uploadBufferToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+        updates.imageUrl = `/files/${fileId.toString()}`;
+      }
+
+      const cacamba = await CacambaModel.findByIdAndUpdate(id, updates, { new: true });
+      if (!cacamba) return res.status(404).json({ message: 'Caçamba não encontrada' });
+
+      return res.json({ cacamba });
+    } catch (e) {
+      console.error('Erro ao editar caçamba:', e);
+      return res.status(500).json({ message: 'Erro ao editar caçamba' });
+    }
+  }
+);
+
+// Excluir caçamba (motorista) – mantém, sem alteração de imagem
 app.delete('/cacambas/:id', authenticateToken, isDriver, async (req, res) => {
   try {
     const cacamba = await CacambaModel.findByIdAndDelete(req.params.id);
@@ -532,7 +539,7 @@ app.delete('/cacambas/:id', authenticateToken, isDriver, async (req, res) => {
 // Mapeia userId -> socket.id[]
 const driverSockets: Record<string, Set<string>> = {};
 
-io.on('connection', (socket) => {
+io.on('connection', (socket: Socket) => {            // TIPADO
   // Motorista envia seu userId após conectar
   socket.on('register_driver', (userId: string) => {
     if (!driverSockets[userId]) driverSockets[userId] = new Set();
@@ -603,5 +610,24 @@ app.get('/clients/:id/orders', authenticateToken, isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar pedidos do cliente:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+});
+
+// Rota para servir arquivos do GridFS
+app.get('/files/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const bucket = getBucket();
+    const _id = new ObjectId(id);
+
+    const files = await bucket.find({ _id }).toArray();
+    if (!files || !files[0]) return res.status(404).json({ message: 'Arquivo não encontrado' });
+
+    res.setHeader('Content-Type', files[0].contentType || 'application/octet-stream');
+    const downloadStream = bucket.openDownloadStream(_id);
+    downloadStream.on('error', () => res.status(500).end());
+    downloadStream.pipe(res);
+  } catch {
+    return res.status(400).json({ message: 'ID inválido' });
   }
 });

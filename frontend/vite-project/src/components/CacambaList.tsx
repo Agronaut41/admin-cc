@@ -151,10 +151,17 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
             </InfoSection>
             <ImageContainer>
               <CacambaImage
-                src={`${apiUrl}${cacamba.imageUrl}`}
+                src={
+                  cacamba.imageUrl
+                    ? (cacamba.imageUrl.startsWith('http')
+                        ? cacamba.imageUrl
+                        : `${apiUrl}${cacamba.imageUrl}`)
+                    : '/placeholder.jpg'
+                }
                 alt="Foto da caçamba"
-                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
-                onClick={() => onImageClick && onImageClick(`${apiUrl}${cacamba.imageUrl}`)}
+                onClick={() => onImageClick && cacamba.imageUrl && onImageClick(
+                  cacamba.imageUrl.startsWith('http') ? cacamba.imageUrl : `${apiUrl}${cacamba.imageUrl}`
+                )}
               />
             </ImageContainer>
           </CardContent>
