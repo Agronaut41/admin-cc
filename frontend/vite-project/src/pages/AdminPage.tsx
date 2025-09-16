@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import type { IOrder, IDriver } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
@@ -239,6 +239,27 @@ const ActionButton = styled.button`
   }
 `;
 
+const DriverTabsBar = styled.div`
+  display:flex;
+  gap:.5rem;
+  flex-wrap:wrap;
+  margin-bottom:1rem;
+`;
+const DriverTabButton = styled.button<{active:boolean}>`
+  background:${p=>p.active ? '#3b82f6' : '#e5e7eb'};
+  color:${p=>p.active ? '#fff' : '#374151'};
+  border:none;
+  padding:.55rem .9rem;
+  font-size:.8rem;
+  font-weight:600;
+  border-radius:20px;
+  cursor:pointer;
+  transition:.18s;
+  &:hover{
+    background:${p=>p.active ? '#2563eb' : '#d1d5db'};
+  }
+`;
+
 // ==========================================================
 // COMPONENTE PRINCIPAL
 // ==========================================================
@@ -254,6 +275,7 @@ const AdminPage: React.FC = () => {
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<IDriver | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(''); // NOVO
   const apiUrl = import.meta.env.VITE_API_URL;
 
   // Função auxiliar para fazer requisições autenticadas
@@ -390,11 +412,20 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  // Agrupa somente pedidos que já têm motorista
-  const ordersByDriver = drivers.reduce((acc, driver) => {
-    acc[driver._id] = orders.filter(o => o.motorista?._id === driver._id);
-    return acc;
-  }, {} as Record<string, IOrder[]>);
+  // Após carregar drivers: definir driver inicial
+  useEffect(() => {
+    if (drivers.length && !selectedDriverId) {
+      setSelectedDriverId(drivers[0]._id);
+    }
+  }, [drivers, selectedDriverId]);
+
+  // Pedidos do motorista selecionado
+  const driverOrders = useMemo(
+    () => orders.filter(o => o.motorista?._id === selectedDriverId),
+    [orders, selectedDriverId]
+  );
+
+  const selectedDriver = drivers.find(d => d._id === selectedDriverId);
 
   if (loading) return <AdminContainer>Carregando...</AdminContainer>;
   if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
@@ -430,25 +461,37 @@ const AdminPage: React.FC = () => {
               <Button onClick={() => setIsOrderModalOpen(true)}>+ Adicionar Pedido</Button>
             </ActionButtons>
 
-            {drivers.map(driver => {
-              const driverOrders = ordersByDriver[driver._id] || [];
-              const pendentes = driverOrders.filter(o => o.status !== 'concluido');
-              const concluidos = driverOrders
-                .filter(o => o.status === 'concluido')
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Mais recente no topo
+            {/* Abas de motoristas */}
+            <DriverTabsBar>
+              {drivers.map(d => (
+                <DriverTabButton
+                  key={d._id}
+                  active={d._id === selectedDriverId}
+                  onClick={() => setSelectedDriverId(d._id)}
+                >
+                  {d.username}
+                </DriverTabButton>
+              ))}
+            </DriverTabsBar>
 
-              return (
-                <SectionContainer key={driver._id}>
-                  <h2>Pedidos do Motorista: {driver.username}</h2>
+            {!drivers.length && <p>Nenhum motorista cadastrado.</p>}
+            {drivers.length > 0 && !driverOrders.length && (
+              <p>Nenhum pedido para o motorista selecionado.</p>
+            )}
 
-                  <h3>Pedidos Pendentes</h3>
-                  {pendentes.length > 0 ? (
-                    <OrdersGrid>
-                      {pendentes.map(order => (
+            {drivers.length > 0 && driverOrders.length > 0 && (
+              <SectionContainer>
+                <h2>Pedidos do Motorista: {selectedDriver?.username}</h2>
+
+                {/* Pendentes */}
+                <h3>Pedidos Pendentes</h3>
+                {driverOrders.filter(o => o.status !== 'concluido').length ? (
+                  <OrdersGrid>
+                    {driverOrders
+                      .filter(o => o.status !== 'concluido')
+                      .map(order => (
                         <OrderCard key={order._id} status={order.status}>
-                          <h3>
-                            Pedido #{order.orderNumber} - {order.clientName}
-                          </h3>
+                          <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
                           <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                           <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                           <p><strong>Prioridade:</strong> {order.priority}</p>
@@ -479,14 +522,13 @@ const AdminPage: React.FC = () => {
                             </div>
                           )}
 
-                          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.5rem' }}>
+                          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
                             <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
                             <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
 
-                            {/* Campo motorista AGORA OBRIGATÓRIO (sem opção vazia) */}
                             <SelectInput
                               required
-                              value={order.motorista?._id || driver._id}
+                              value={order.motorista?._id || selectedDriverId}
                               onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value as any })}
                             >
                               {drivers.map(d => (
@@ -508,19 +550,21 @@ const AdminPage: React.FC = () => {
                           </div>
                         </OrderCard>
                       ))}
-                    </OrdersGrid>
-                  ) : (
-                    <p>Nenhum pedido pendente para este motorista.</p>
-                  )}
+                  </OrdersGrid>
+                ) : (
+                  <p>Nenhum pedido pendente.</p>
+                )}
 
-                  <h3 style={{ marginTop: '1.5rem' }}>Pedidos Concluídos</h3>
-                  {concluidos.length > 0 ? (
-                    <OrdersGrid>
-                      {concluidos.map(order => (
+                {/* Concluídos */}
+                <h3 style={{ marginTop:'1.5rem' }}>Pedidos Concluídos</h3>
+                {driverOrders.filter(o => o.status === 'concluido').length ? (
+                  <OrdersGrid>
+                    {driverOrders
+                      .filter(o => o.status === 'concluido')
+                      .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map(order => (
                         <OrderCard key={order._id} status={order.status}>
-                          <h3>
-                            Pedido #{order.orderNumber} - {order.clientName}
-                          </h3>
+                          <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
                           <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                           <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 
@@ -550,13 +594,13 @@ const AdminPage: React.FC = () => {
                             </div>
                           )}
 
-                          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.5rem' }}>
+                          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
                             {order.status === 'concluido' && (
                               <ActionButton
                                 type="button"
                                 onClick={() => downloadOrderPdf(order)}
-                                style={{ background: '#2563eb' }}
+                                style={{ background:'#2563eb' }}
                               >
                                 Baixar Pedido
                               </ActionButton>
@@ -564,13 +608,12 @@ const AdminPage: React.FC = () => {
                           </div>
                         </OrderCard>
                       ))}
-                    </OrdersGrid>
-                  ) : (
-                    <p>Nenhum pedido concluído para este motorista.</p>
-                  )}
-                </SectionContainer>
-              );
-            })}
+                  </OrdersGrid>
+                ) : (
+                  <p>Nenhum pedido concluído.</p>
+                )}
+              </SectionContainer>
+            )}
           </div>
         )}
 
