@@ -390,13 +390,11 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  // Agrupa pedidos por motorista
+  // Agrupa somente pedidos que já têm motorista
   const ordersByDriver = drivers.reduce((acc, driver) => {
-    acc[driver._id] = orders.filter(order => order.motorista?._id === driver._id);
+    acc[driver._id] = orders.filter(o => o.motorista?._id === driver._id);
     return acc;
   }, {} as Record<string, IOrder[]>);
-
-  const unassignedOrders = orders.filter(order => !order.motorista);
 
   if (loading) return <AdminContainer>Carregando...</AdminContainer>;
   if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
@@ -432,77 +430,6 @@ const AdminPage: React.FC = () => {
               <Button onClick={() => setIsOrderModalOpen(true)}>+ Adicionar Pedido</Button>
             </ActionButtons>
 
-            {/* Pedidos Não Atribuídos */}
-            <SectionContainer>
-              <h2>Pedidos Não Atribuídos</h2>
-              {unassignedOrders.length > 0 ? (
-                <OrdersGrid>
-                  {unassignedOrders.map(order => (
-                    <OrderCard key={order._id} status={order.status}>
-                      <h3>
-                        Pedido #{order.orderNumber} - {order.clientName}
-                      </h3>
-                      <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
-                      <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                      <p><strong>Status:</strong> {order.status}</p>
-                      <p><strong>Prioridade:</strong> {order.priority}</p>
-                      {order.cacambas && order.cacambas.length > 0 && (
-                        <CacambaSection>
-                          <h4>Caçambas Registradas:</h4>
-                          <CacambaList
-                            cacambas={order.cacambas || []}
-                            onImageClick={setModalImage}
-                          />
-                        </CacambaSection>
-                      )}
-                      {order.imageUrls && order.imageUrls.length > 0 && (
-                        <div>
-                          <h4>Imagens Anexadas:</h4>
-                          <ImageContainer>
-                            {order.imageUrls.map((url, index) => (
-                              <OrderImage
-                                key={index}
-                                src={`${apiUrl}${url}`}
-                                alt={`Imagem ${index + 1}`}
-                                onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            ))}
-                          </ImageContainer>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                        <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
-                        <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
-                        <SelectInput
-                          value={order.status}
-                          onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
-                        >
-                          <option value="pendente">Pendente</option>
-                          <option value="em_andamento">Em Andamento</option>
-                          <option value="concluido">Concluído</option>
-                          <option value="cancelado">Cancelado</option>
-                        </SelectInput>
-                        <SelectInput
-                          value={order.motorista?._id || ''}
-                          onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
-                        >
-                          <option value="">Atribuir</option>
-                          {drivers.map(d => (
-                            <option key={d._id} value={d._id}>{d.username}</option>
-                          ))}
-                        </SelectInput>
-                        <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                      </div>
-                    </OrderCard>
-                  ))}
-                </OrdersGrid>
-              ) : (
-                <p>Nenhum pedido não atribuído.</p>
-              )}
-            </SectionContainer>
-            
-            {/* Pedidos por Motorista */}
             {drivers.map(driver => {
               const driverOrders = ordersByDriver[driver._id] || [];
               const pendentes = driverOrders.filter(o => o.status !== 'concluido');
@@ -513,6 +440,7 @@ const AdminPage: React.FC = () => {
               return (
                 <SectionContainer key={driver._id}>
                   <h2>Pedidos do Motorista: {driver.username}</h2>
+
                   <h3>Pedidos Pendentes</h3>
                   {pendentes.length > 0 ? (
                     <OrdersGrid>
@@ -523,9 +451,9 @@ const AdminPage: React.FC = () => {
                           </h3>
                           <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                           <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                          {/* <p><strong>Status:</strong> {order.status}</p> */}
                           <p><strong>Prioridade:</strong> {order.priority}</p>
-                          {order.cacambas && order.cacambas.length > 0 && (
+
+                          {order.cacambas?.length > 0 && (
                             <CacambaSection>
                               <h4>Caçambas Registradas:</h4>
                               <CacambaList
@@ -534,34 +462,48 @@ const AdminPage: React.FC = () => {
                               />
                             </CacambaSection>
                           )}
-                          {order.imageUrls && order.imageUrls.length > 0 && (
+
+                          {order.imageUrls?.length > 0 && (
                             <div>
                               <h4>Imagens Anexadas:</h4>
                               <ImageContainer>
-                                {order.imageUrls.map((url, index) => (
+                                {order.imageUrls.map((url, i) => (
                                   <OrderImage
-                                    key={index}
+                                    key={i}
                                     src={`${apiUrl}${url}`}
-                                    alt={`Imagem ${index + 1}`}
+                                    alt={`Imagem ${i + 1}`}
                                     onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                    style={{ cursor: 'pointer' }}
                                   />
                                 ))}
                               </ImageContainer>
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+
+                          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.5rem' }}>
                             <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
                             <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
+
+                            {/* Campo motorista AGORA OBRIGATÓRIO (sem opção vazia) */}
                             <SelectInput
-                              value={order.motorista?._id || ''}
-                              onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value || null as any })}
+                              required
+                              value={order.motorista?._id || driver._id}
+                              onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value as any })}
                             >
-                              <option value="">Desatribuir</option>
                               {drivers.map(d => (
                                 <option key={d._id} value={d._id}>{d.username}</option>
                               ))}
                             </SelectInput>
+
+                            <SelectInput
+                              value={order.status}
+                              onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
+                            >
+                              <option value="pendente">Pendente</option>
+                              <option value="em_andamento">Em Andamento</option>
+                              <option value="concluido">Concluído</option>
+                              <option value="cancelado">Cancelado</option>
+                            </SelectInput>
+
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
                           </div>
                         </OrderCard>
@@ -570,6 +512,7 @@ const AdminPage: React.FC = () => {
                   ) : (
                     <p>Nenhum pedido pendente para este motorista.</p>
                   )}
+
                   <h3 style={{ marginTop: '1.5rem' }}>Pedidos Concluídos</h3>
                   {concluidos.length > 0 ? (
                     <OrdersGrid>
@@ -580,9 +523,8 @@ const AdminPage: React.FC = () => {
                           </h3>
                           <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                           <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                          {/* <p><strong>Status:</strong> {order.status}</p> */}
-                          {/* Prioridade removida para pedidos concluídos */}
-                          {order.cacambas && order.cacambas.length > 0 && (
+
+                          {order.cacambas?.length > 0 && (
                             <CacambaSection>
                               <h4>Caçambas Registradas:</h4>
                               <CacambaList
@@ -591,23 +533,24 @@ const AdminPage: React.FC = () => {
                               />
                             </CacambaSection>
                           )}
-                          {order.imageUrls && order.imageUrls.length > 0 && (
+
+                          {order.imageUrls?.length > 0 && (
                             <div>
                               <h4>Imagens Anexadas:</h4>
                               <ImageContainer>
-                                {order.imageUrls.map((url, index) => (
+                                {order.imageUrls.map((url, i) => (
                                   <OrderImage
-                                    key={index}
+                                    key={i}
                                     src={`${apiUrl}${url}`}
-                                    alt={`Imagem ${index + 1}`}
+                                    alt={`Imagem ${i + 1}`}
                                     onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                    style={{ cursor: 'pointer' }}
                                   />
                                 ))}
                               </ImageContainer>
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+
+                          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.5rem' }}>
                             <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
                             {order.status === 'concluido' && (
                               <ActionButton

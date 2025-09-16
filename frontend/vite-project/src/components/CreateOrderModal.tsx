@@ -25,7 +25,7 @@ const Label = styled.label`
 `;
 const Input = styled.input`
   width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #d1d5db;
-  border-radius: 6px; font-size: 1rem;
+  border-radius: 6px; font-size: 1rem; width: -webkit-fill-available;
   &:read-only { background-color: #f3f4f6; color: #6b7280; }
 `;
 const Select = styled.select`
@@ -189,10 +189,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                 </Select>
               </FormGroup>
               <FormGroup>
-                <Label>Atribuir Motorista (Opcional)</Label>
+                <Label>Atribuir Motorista</Label>
                 <Select
                   value={formData.motorista}
                   onChange={e => setFormData(prev => ({ ...prev, motorista: e.target.value }))}
+                  required={true}
                 >
                   <option value="">Nenhum</option>
                   {drivers.map(driver => (
