@@ -406,13 +406,16 @@ app.post('/driver/orders/:id/cacambas',
     const { id } = req.params;
     const { numero, tipo, local } = req.body;
 
-    // Verifica pedido do motorista
     const order = await OrderModel.findOne({ _id: id, motorista: req.userData?.userId });
     if (!order) {
       return res.status(404).json({ message: 'Pedido não encontrado ou não pertence a este motorista.' });
     }
 
-    // Determina tipo final
+    const exists = await CacambaModel.findOne({ orderId: order._id, numero: numero.trim() });
+    if (exists) {
+      return res.status(400).json({ message: 'Número de caçamba já registrado neste pedido.' });
+    }
+
     let finalTipo: 'entrega' | 'retirada';
     if (order.type === 'retirada') finalTipo = 'retirada';
     else if (order.type === 'entrega') finalTipo = 'entrega';
@@ -428,7 +431,7 @@ app.post('/driver/orders/:id/cacambas',
       }
 
       const cacamba = await CacambaModel.create({
-        numero,
+        numero: numero.trim(),
         tipo: finalTipo,
         local,
         orderId: order._id,
@@ -441,7 +444,10 @@ app.post('/driver/orders/:id/cacambas',
       });
 
       return res.status(201).json({ message: 'Caçamba registrada com sucesso!', cacamba });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 11000) {
+        return res.status(400).json({ message: 'Número de caçamba já registrado neste pedido.' });
+      }
       console.error('Erro ao registrar caçamba:', error);
       return res.status(500).json({ message: 'Erro interno do servidor.' });
     }

@@ -16,8 +16,10 @@ const CacambaSchema: Schema = new Schema({
   tipo: { type: String, enum: ['entrega', 'retirada'], required: true },
   imageUrl: { type: String, required: true },
   orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
-  local: { type: String, enum: ['via_publica', 'canteiro_obra'], required: true }, // <-- Adicione aqui
+  local: { type: String, enum: ['via_publica', 'canteiro_obra'], required: true },
   createdAt: { type: Date, default: Date.now },
 });
+
+CacambaSchema.index({ orderId: 1, numero: 1 }, { unique: true });
 
 export const CacambaModel = mongoose.model<ICacamba>('Cacamba', CacambaSchema);

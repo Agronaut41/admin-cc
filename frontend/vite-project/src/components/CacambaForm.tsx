@@ -180,14 +180,12 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
       const token = localStorage.getItem('token');
       const response = await fetch(`${apiUrl}/driver/orders/${orderId}/cacambas`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'Erro ao registrar caçamba');
       }
 
