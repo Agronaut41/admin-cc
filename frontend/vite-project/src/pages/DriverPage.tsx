@@ -122,6 +122,10 @@ const DriverPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   // ADICIONE um estado para guardar o tipo do pedido em edição
   const [editingOrderType, setEditingOrderType] = useState<'entrega' | 'retirada' | 'troca' | undefined>(undefined);
+  const [role] = useState<string | null>(() => localStorage.getItem('role'));
+  const [permission, setPermission] = useState<NotificationPermission>(() => (typeof Notification !== 'undefined' ? Notification.permission : 'default'));
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [pushError, setPushError] = useState<string | null>(null);
   
   // Defina a apiUrl aqui, lendo do .env
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -203,6 +207,111 @@ const DriverPage: React.FC = () => {
       }))
     );
   };
+
+  // (Primeiro bloco duplicado de handlers removido)
+
+  async function checkSubscriptionStatus() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return;
+      const sub = await reg.pushManager.getSubscription();
+      setIsSubscribed(!!sub);
+    } catch (e) {
+      console.warn('Erro ao verificar subscription', e);
+    }
+  }
+
+  async function registerServiceWorkerAndSubscribe(manual = false) {
+    setPushError(null);
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushError('Navegador não suporta notificações push.');
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      let currentPermission = Notification.permission;
+      if (currentPermission === 'default') {
+        // Alguns browsers exigem gesto do usuário (manual === true)
+        if (!manual) {
+          console.log('Aguardando clique do usuário para solicitar permissão.');
+          return;
+        }
+        currentPermission = await Notification.requestPermission();
+      }
+      setPermission(currentPermission);
+      if (currentPermission !== 'granted') {
+        setPushError('Permissão não concedida para notificações.');
+        return;
+      }
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        console.log('Já existe subscription push.');
+        setIsSubscribed(true);
+        return;
+      }
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) {
+        setPushError('VITE_VAPID_PUBLIC_KEY ausente no frontend.');
+        return;
+      }
+      const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey
+      });
+      const token = localStorage.getItem('token');
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/push/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || ''}`
+        },
+        body: JSON.stringify({ subscription })
+      });
+      if (!resp.ok) {
+        setPushError('Falha ao registrar subscription no servidor.');
+      } else {
+        setIsSubscribed(true);
+      }
+    } catch (e: any) {
+      console.error('Erro push:', e);
+      setPushError(e?.message || 'Erro inesperado ao ativar push.');
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const raw = atob(base64);
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  // Chamar após autenticação do motorista
+  useEffect(() => {
+    fetchDriverOrders();
+
+    socket.on('orders_updated', () => {
+      fetchDriverOrders();
+    });
+
+    return () => {
+      socket.off('orders_updated');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (role === 'motorista') {
+      // Checa estado atual sem disparar prompt
+      checkSubscriptionStatus();
+    }
+  }, [role]);
+
+  // (Duplicated handleUpdateCacamba removed - original earlier in file is used)
 
   const handleCompleteOrder = async (orderId: string) => {
     try {
@@ -327,6 +436,18 @@ const DriverPage: React.FC = () => {
           })
         }
       </OrdersGrid>
+
+      {role === 'motorista' && (
+        <div style={{ marginTop: '1.5rem' }}>
+          {!isSubscribed && (
+            <CacambaButton style={{ background: '#6366f1' }} onClick={() => registerServiceWorkerAndSubscribe(true)}>
+              Ativar Notificações
+            </CacambaButton>
+          )}
+          {isSubscribed && <span style={{ marginLeft: '0.5rem', color: '#16a34a' }}>Notificações ativas</span>}
+          {pushError && <div style={{ marginTop: '0.5rem', color: 'red' }}>{pushError}</div>}
+        </div>
+      )}
 
       {showCacambaForm && selectedOrderId && selectedOrderType && (
         <CacambaForm

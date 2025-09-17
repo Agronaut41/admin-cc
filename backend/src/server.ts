@@ -15,6 +15,8 @@ import { getBucket, uploadBufferToGridFS } from './gridfs'; // ADICIONADO
 import { ObjectId } from 'mongodb';
 import { createServer } from 'http';                 // ADICIONADO
 import { Server as SocketIOServer, Socket } from 'socket.io'; // ADICIONADO
+import webpush from 'web-push';
+import { PushSubscriptionModel, IPushSubscription } from './models/PushSubscription';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -161,7 +163,15 @@ app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest
     });
 
     await newOrder.save();
-    notifyDrivers(); // Notifica via WebSocket, se estiver usando
+    notifyDrivers(); // Notifica via WebSocket
+    // Envia push para o motorista atribuído (se houver)
+    if (newOrder.motorista) {
+      sendPushToDriver(newOrder.motorista.toString(), {
+        title: 'Novo Pedido Atribuído',
+        body: `Pedido #${newOrder.orderNumber} para ${newOrder.clientName}`,
+        data: { orderId: newOrder._id }
+      }).catch(e => console.error('Falha push criação pedido', e));
+    }
     return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
 
   } catch (error: any) {
@@ -198,9 +208,18 @@ app.patch('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     try {
+        const prevOrder = await OrderModel.findById(id);
         const updatedOrder = await OrderModel.findByIdAndUpdate(id, { ...updates, updatedAt: Date.now() }, { new: true });
         if (!updatedOrder) {
             return res.status(404).json({ message: 'Pedido não encontrado.' });
+        }
+        // Se motorista foi definido ou alterado, notifica via push
+        if (updatedOrder.motorista && (!prevOrder?.motorista || prevOrder.motorista.toString() !== updatedOrder.motorista.toString())) {
+          sendPushToDriver(updatedOrder.motorista.toString(), {
+            title: 'Pedido Atribuído / Atualizado',
+            body: `Pedido #${updatedOrder.orderNumber} para ${updatedOrder.clientName}`,
+            data: { orderId: updatedOrder._id }
+          }).catch(e => console.error('Falha push update pedido', e));
         }
         return res.status(200).json({ message: 'Pedido atualizado com sucesso!', order: updatedOrder });
     } catch (error) {
@@ -637,3 +656,76 @@ app.get('/files/:id', async (req, res) => {
     return res.status(400).json({ message: 'ID inválido' });
   }
 });
+
+if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  console.warn('Chaves VAPID ausentes. Configure VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY.');
+} else {
+  webpush.setVapidDetails(
+    'mailto:thiago.ralves02@gmail.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+// ==========================================================
+// ROTAS DE NOTIFICAÇÃO POR PUSH (ADMIN E MOTORISTA)
+// ==========================================================
+
+// Registrar subscription para notificações push
+app.post('/push/subscribe', authenticateToken, isDriver, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { subscription } = req.body;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return res.status(400).json({ message: 'Subscription inválida' });
+    }
+
+    await PushSubscriptionModel.updateOne(
+      { endpoint: subscription.endpoint },
+      {
+        userId: req.userData!.userId,
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.keys.p256dh,
+          auth: subscription.keys.auth
+        }
+      },
+      { upsert: true }
+    );
+
+    return res.status(201).json({ message: 'Subscription registrada.' });
+  } catch (e) {
+    console.error('Erro ao registrar subscription', e);
+    return res.status(500).json({ message: 'Erro interno' });
+  }
+});
+
+async function sendPushToDriver(driverId: string, payload: { title: string; body: string; data?: any }) {
+  const subs = await PushSubscriptionModel.find({ userId: driverId });
+  await Promise.all(
+    subs.map(async (sub: IPushSubscription) => {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.keys.p256dh,
+              auth: sub.keys.auth
+            }
+          } as any,
+          JSON.stringify({
+            title: payload.title,
+            body: payload.body,
+            data: payload.data
+          })
+        );
+      } catch (err: any) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          // subscription inválida — remove
+          await PushSubscriptionModel.deleteOne({ _id: sub._id });
+        } else {
+          console.error('Falha push:', err.statusCode, err.body);
+        }
+      }
+    })
+  );
+}
