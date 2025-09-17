@@ -17,6 +17,11 @@ import { createServer } from 'http';                 // ADICIONADO
 import { Server as SocketIOServer, Socket } from 'socket.io'; // ADICIONADO
 import webpush from 'web-push';
 import { PushSubscriptionModel, IPushSubscription } from './models/PushSubscription';
+import path from 'path';
+import { compressImage, extractGridFsIdFromUrl } from './utils/image';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+const pipe = promisify(pipeline);
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -32,7 +37,7 @@ connectDB();
 // Configurar o Multer para o upload de arquivos
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 20 * 1024 * 1024 }
 });
 
 // Middlewares
@@ -443,7 +448,12 @@ app.post('/driver/orders/:id/cacambas',
     try {
       let imageUrl: string | undefined;
       if (req.file) {
-        const fileId = await uploadBufferToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+        const { buffer: outBuf, contentType, filename } = await compressImage(
+          req.file.buffer,
+          req.file.originalname,
+          { maxWidth: 1280, maxHeight: 1280, quality: 75, format: 'webp' }
+        );
+        const fileId = await uploadBufferToGridFS(outBuf, filename, contentType);
         imageUrl = `/files/${fileId.toString()}`;
       } else {
         return res.status(400).json({ message: 'Imagem é obrigatória.' });
@@ -533,8 +543,20 @@ app.patch('/cacambas/:id',
       if (local) updates.local = local;
 
       if (req.file) {
-        const fileId = await uploadBufferToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype);
+        const { buffer: outBuf, contentType, filename } = await compressImage(
+          req.file.buffer,
+          req.file.originalname,
+          { maxWidth: 1280, maxHeight: 1280, quality: 75, format: 'webp' }
+        );
+        const fileId = await uploadBufferToGridFS(outBuf, filename, contentType);
         updates.imageUrl = `/files/${fileId.toString()}`;
+
+        // Remove imagem antiga para liberar espaço
+        const current = await CacambaModel.findById(id).lean();
+        const oldId = extractGridFsIdFromUrl(current?.imageUrl);
+        if (oldId) {
+          try { await getBucket().delete(new ObjectId(oldId)); } catch {}
+        }
       }
 
       const cacamba = await CacambaModel.findByIdAndUpdate(id, updates, { new: true });
@@ -549,15 +571,19 @@ app.patch('/cacambas/:id',
 );
 
 // Excluir caçamba (motorista) – mantém, sem alteração de imagem
-app.delete('/cacambas/:id', authenticateToken, isDriver, async (req, res) => {
+app.delete('/cacambas/:id', authenticateToken, async (req, res) => {
   try {
-    const cacamba = await CacambaModel.findByIdAndDelete(req.params.id);
-    if (!cacamba) return res.status(404).json({ message: 'Caçamba não encontrada' });
-    // Remover referência da caçamba do pedido
-    await OrderModel.findByIdAndUpdate(cacamba.orderId, { $pull: { cacambas: cacamba._id } });
-    res.json({ message: 'Caçamba excluída com sucesso' });
-  } catch (err) {
-    res.status(500).json({ message: 'Erro ao excluir caçamba' });
+    const { id } = req.params;
+    const cac = await CacambaModel.findByIdAndDelete(id);
+    if (!cac) return res.status(404).json({ message: 'Caçamba não encontrada' });
+
+    const oldId = extractGridFsIdFromUrl(cac.imageUrl);
+    if (oldId) {
+      try { await getBucket().delete(new ObjectId(oldId)); } catch {}
+    }
+    return res.json({ message: 'Caçamba excluída.' });
+  } catch (e) {
+    return res.status(500).json({ message: 'Erro ao excluir caçamba' });
   }
 });
 

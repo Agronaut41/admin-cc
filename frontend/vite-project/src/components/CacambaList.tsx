@@ -119,6 +119,14 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
   }
   const apiUrl = import.meta.env.VITE_API_URL;
 
+  const buildImageUrl = (url?: string, w = 480, q = 70) => {
+    if (!url) return '';
+    const absolute = url.startsWith('http');
+    const base = absolute ? url : `${apiUrl}${url}`;
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}w=${w}&q=${q}&f=webp`;
+  };
+
   return (
     <Container>
       <Title>Caçambas Registradas:</Title>
@@ -151,17 +159,9 @@ const CacambaList: React.FC<CacambaListProps> = ({ cacambas, onImageClick, onEdi
             </InfoSection>
             <ImageContainer>
               <CacambaImage
-                src={
-                  cacamba.imageUrl
-                    ? (cacamba.imageUrl.startsWith('http')
-                        ? cacamba.imageUrl
-                        : `${apiUrl}${cacamba.imageUrl}`)
-                    : '/placeholder.jpg'
-                }
+                src={buildImageUrl(cacamba.imageUrl, 480, 70)}
                 alt="Foto da caçamba"
-                onClick={() => onImageClick && cacamba.imageUrl && onImageClick(
-                  cacamba.imageUrl.startsWith('http') ? cacamba.imageUrl : `${apiUrl}${cacamba.imageUrl}`
-                )}
+                onClick={() => onImageClick && cacamba.imageUrl && onImageClick(buildImageUrl(cacamba.imageUrl, 1200, 80))}
               />
             </ImageContainer>
           </CardContent>
