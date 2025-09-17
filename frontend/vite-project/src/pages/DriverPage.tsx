@@ -123,7 +123,6 @@ const DriverPage: React.FC = () => {
   // ADICIONE um estado para guardar o tipo do pedido em edição
   const [editingOrderType, setEditingOrderType] = useState<'entrega' | 'retirada' | 'troca' | undefined>(undefined);
   const [role] = useState<string | null>(() => localStorage.getItem('role'));
-  const [permission, setPermission] = useState<NotificationPermission>(() => (typeof Notification !== 'undefined' ? Notification.permission : 'default'));
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [pushError, setPushError] = useState<string | null>(null);
   
@@ -222,7 +221,7 @@ const DriverPage: React.FC = () => {
     }
   }
 
-  async function registerServiceWorkerAndSubscribe(manual = false) {
+  const registerServiceWorkerAndSubscribe = async (manual = false) => {
     setPushError(null);
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setPushError('Navegador não suporta notificações push.');
@@ -239,7 +238,6 @@ const DriverPage: React.FC = () => {
         }
         currentPermission = await Notification.requestPermission();
       }
-      setPermission(currentPermission);
       if (currentPermission !== 'granted') {
         setPushError('Permissão não concedida para notificações.');
         return;
