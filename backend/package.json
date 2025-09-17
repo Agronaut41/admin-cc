@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate:recompress:js": "node dist/scripts/recompressGridFs.js",
+    "start:migrate-once": "node dist/scripts/recompressGridFs.js && node dist/server.js",
+    "start:migrate-dry": "node dist/scripts/recompressGridFs.js --dry-run && node dist/server.js"
   },
   "keywords": [],
   "author": "",
