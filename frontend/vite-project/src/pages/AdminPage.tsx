@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import styled from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
 import type { IOrder, IDriver } from '../interfaces';
 import CreateOrderModal from '../components/CreateOrderModal';
 import CreateDriverModal from '../components/CreateDriverModal';
 import CacambaList from '../components/CacambaList';
 import ClientPage from './ClientPage';
 import { io } from 'socket.io-client';
-import { downloadOrderPdf } from '../utils/orderPdf'; // ADIÇÃO
+import { downloadOrderPdf } from '../utils/orderPdf';
 
 // ==========================================================
 // ESTILOS
@@ -69,6 +69,10 @@ const ContentContainer = styled.div`
   padding: 1.5rem;
   border-radius: 0 8px 8px 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 `;
 
 const ActionButtons = styled.div`
@@ -208,26 +212,42 @@ const PriorityButton = styled(Button)`
 
 const IncreasePriorityButton = styled(PriorityButton)`
   background-color: #10b981;
+
+  @media (max-width: 768px) {
+    width: 48%;
+  }
 `;
 
 const DecreasePriorityButton = styled(PriorityButton)`
   background-color: #f59e0b;
+
+  @media (max-width: 768px) {
+    width: 48%;
+  }
 `;
 
 const DeleteOrderButton = styled(PriorityButton)`
   background-color: #ef4444;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const SelectInput = styled.select`
   padding: 0.5rem;
   border-radius: 4px;
   border: 1px solid #ddd;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const ActionButton = styled.button`
   background-color: #3b82f6;
   color: white;
-  padding: 0.8rem 1.2rem;
+  padding: 0.5rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -236,6 +256,10 @@ const ActionButton = styled.button`
   
   &:hover {
     background-color: #2563eb;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;
 
@@ -258,6 +282,11 @@ const DriverTabButton = styled.button<{active:boolean}>`
   &:hover{
     background:${p=>p.active ? '#2563eb' : '#d1d5db'};
   }
+`;
+
+// Remover margem padrão do body
+const GlobalStyle = createGlobalStyle`
+  body { margin: 0; }
 `;
 
 // ==========================================================
@@ -431,230 +460,223 @@ const AdminPage: React.FC = () => {
   if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
 
   return (
-    <AdminContainer>
-      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
+    <>
+      <GlobalStyle />
+      <AdminContainer>
+        {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
 
-      <Header>
-        <h1>Painel de Administração de Caçambas</h1>
-      </Header>
+        <Header>
+          <h1>Painel de Administração de Caçambas</h1>
+        </Header>
 
-      <TabContainer>
-        <Tab active={activeTab === 'pedidos'} onClick={() => setActiveTab('pedidos')}>
-          Pedidos
-        </Tab>
-        <Tab active={activeTab === 'clientes'} onClick={() => setActiveTab('clientes')}>
-          Clientes
-        </Tab>
-        <Tab active={activeTab === 'motoristas'} onClick={() => setActiveTab('motoristas')}>
-          Motoristas
-        </Tab>
-      </TabContainer>
+        <TabContainer>
+          <Tab active={activeTab === 'pedidos'} onClick={() => setActiveTab('pedidos')}>
+            Pedidos
+          </Tab>
+          <Tab active={activeTab === 'clientes'} onClick={() => setActiveTab('clientes')}>
+            Clientes
+          </Tab>
+          <Tab active={activeTab === 'motoristas'} onClick={() => setActiveTab('motoristas')}>
+            Motoristas
+          </Tab>
+        </TabContainer>
 
-      <ContentContainer>
-        {activeTab === 'clientes' && (
-          <ClientPage />
-        )}
+        <ContentContainer>
+          {activeTab === 'clientes' && (
+            <ClientPage />
+          )}
 
-        {activeTab === 'pedidos' && (
-          <div>
-            <ActionButtons>
-              <Button onClick={() => setIsOrderModalOpen(true)}>+ Adicionar Pedido</Button>
-            </ActionButtons>
+          {activeTab === 'pedidos' && (
+            <div>
+              <ActionButtons>
+                <Button onClick={() => setIsOrderModalOpen(true)}>+ Adicionar Pedido</Button>
+              </ActionButtons>
 
-            {/* Abas de motoristas */}
-            <DriverTabsBar>
-              {drivers.map(d => (
-                <DriverTabButton
-                  key={d._id}
-                  active={d._id === selectedDriverId}
-                  onClick={() => setSelectedDriverId(d._id)}
-                >
-                  {d.username}
-                </DriverTabButton>
-              ))}
-            </DriverTabsBar>
+              {/* Abas de motoristas */}
+              <DriverTabsBar>
+                {drivers.map(d => (
+                  <DriverTabButton
+                    key={d._id}
+                    active={d._id === selectedDriverId}
+                    onClick={() => setSelectedDriverId(d._id)}
+                  >
+                    {d.username}
+                  </DriverTabButton>
+                ))}
+              </DriverTabsBar>
 
-            {!drivers.length && <p>Nenhum motorista cadastrado.</p>}
-            {drivers.length > 0 && !driverOrders.length && (
-              <p>Nenhum pedido para o motorista selecionado.</p>
-            )}
+              {!drivers.length && <p>Nenhum motorista cadastrado.</p>}
+              {drivers.length > 0 && !driverOrders.length && (
+                <p>Nenhum pedido para o motorista selecionado.</p>
+              )}
 
-            {drivers.length > 0 && driverOrders.length > 0 && (
-              <SectionContainer>
-                <h2>Pedidos do Motorista: {selectedDriver?.username}</h2>
+              {drivers.length > 0 && driverOrders.length > 0 && (
+                <SectionContainer>
+                  <h2>Pedidos do Motorista: {selectedDriver?.username}</h2>
 
-                {/* Pendentes */}
-                <h3>Pedidos Pendentes</h3>
-                {driverOrders.filter(o => o.status !== 'concluido').length ? (
-                  <OrdersGrid>
-                    {driverOrders
-                      .filter(o => o.status !== 'concluido')
-                      .map(order => (
-                        <OrderCard key={order._id} status={order.status}>
-                          <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                          <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
-                          <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                          <p><strong>Prioridade:</strong> {order.priority}</p>
+                  {/* Pendentes */}
+                  <h3>Pedidos Pendentes</h3>
+                  {driverOrders.filter(o => o.status !== 'concluido').length ? (
+                    <OrdersGrid>
+                      {driverOrders
+                        .filter(o => o.status !== 'concluido')
+                        .map(order => (
+                          <OrderCard key={order._id} status={order.status}>
+                            <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
+                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                            <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                            <p><strong>Prioridade:</strong> {order.priority}</p>
 
-                          {order.cacambas?.length > 0 && (
-                            <CacambaSection>
-                              <h4>Caçambas Registradas:</h4>
-                              <CacambaList
-                                cacambas={order.cacambas || []}
-                                onImageClick={setModalImage}
-                              />
-                            </CacambaSection>
-                          )}
-
-                          {order.imageUrls?.length > 0 && (
-                            <div>
-                              <h4>Imagens Anexadas:</h4>
-                              <ImageContainer>
-                                {order.imageUrls.map((url, i) => (
-                                  <OrderImage
-                                    key={i}
-                                    src={`${apiUrl}${url}`}
-                                    alt={`Imagem ${i + 1}`}
-                                    onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                  />
-                                ))}
-                              </ImageContainer>
-                            </div>
-                          )}
-
-                          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
-                            <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
-                            <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
-
-                            <SelectInput
-                              required
-                              value={order.motorista?._id || selectedDriverId}
-                              onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value as any })}
-                            >
-                              {drivers.map(d => (
-                                <option key={d._id} value={d._id}>{d.username}</option>
-                              ))}
-                            </SelectInput>
-
-                            <SelectInput
-                              value={order.status}
-                              onChange={(e) => handleUpdateOrder(order._id, { status: e.target.value as IOrder['status'] })}
-                            >
-                              <option value="pendente">Pendente</option>
-                              <option value="em_andamento">Em Andamento</option>
-                              <option value="concluido">Concluído</option>
-                              <option value="cancelado">Cancelado</option>
-                            </SelectInput>
-
-                            <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                          </div>
-                        </OrderCard>
-                      ))}
-                  </OrdersGrid>
-                ) : (
-                  <p>Nenhum pedido pendente.</p>
-                )}
-
-                {/* Concluídos */}
-                <h3 style={{ marginTop:'1.5rem' }}>Pedidos Concluídos</h3>
-                {driverOrders.filter(o => o.status === 'concluido').length ? (
-                  <OrdersGrid>
-                    {driverOrders
-                      .filter(o => o.status === 'concluido')
-                      .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .map(order => (
-                        <OrderCard key={order._id} status={order.status}>
-                          <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                          <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
-                          <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-
-                          {order.cacambas?.length > 0 && (
-                            <CacambaSection>
-                              <h4>Caçambas Registradas:</h4>
-                              <CacambaList
-                                cacambas={order.cacambas || []}
-                                onImageClick={setModalImage}
-                              />
-                            </CacambaSection>
-                          )}
-
-                          {order.imageUrls?.length > 0 && (
-                            <div>
-                              <h4>Imagens Anexadas:</h4>
-                              <ImageContainer>
-                                {order.imageUrls.map((url, i) => (
-                                  <OrderImage
-                                    key={i}
-                                    src={`${apiUrl}${url}`}
-                                    alt={`Imagem ${i + 1}`}
-                                    onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                  />
-                                ))}
-                              </ImageContainer>
-                            </div>
-                          )}
-
-                          <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
-                            <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                            {order.status === 'concluido' && (
-                              <ActionButton
-                                type="button"
-                                onClick={() => downloadOrderPdf(order)}
-                                style={{ background:'#2563eb' }}
-                              >
-                                Baixar Pedido
-                              </ActionButton>
+                            {order.cacambas?.length > 0 && (
+                              <CacambaSection>
+                                <h4>Caçambas Registradas:</h4>
+                                <CacambaList
+                                  cacambas={order.cacambas || []}
+                                  onImageClick={setModalImage}
+                                />
+                              </CacambaSection>
                             )}
-                          </div>
-                        </OrderCard>
-                      ))}
-                  </OrdersGrid>
-                ) : (
-                  <p>Nenhum pedido concluído.</p>
-                )}
-              </SectionContainer>
-            )}
-          </div>
+
+                            {order.imageUrls?.length > 0 && (
+                              <div>
+                                <h4>Imagens Anexadas:</h4>
+                                <ImageContainer>
+                                  {order.imageUrls.map((url, i) => (
+                                    <OrderImage
+                                      key={i}
+                                      src={`${apiUrl}${url}`}
+                                      alt={`Imagem ${i + 1}`}
+                                      onClick={() => setModalImage(`${apiUrl}${url}`)}
+                                    />
+                                  ))}
+                                </ImageContainer>
+                              </div>
+                            )}
+
+                            <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
+                              <IncreasePriorityButton onClick={() => handleIncreasePriority(order._id, order.priority)}>▲ Prioridade</IncreasePriorityButton>
+                              <DecreasePriorityButton onClick={() => handleDecreasePriority(order._id, order.priority)}>▼ Prioridade</DecreasePriorityButton>
+
+                              <SelectInput
+                                required
+                                value={order.motorista?._id || selectedDriverId}
+                                onChange={(e) => handleUpdateOrder(order._id, { motorista: e.target.value as any })}
+                              >
+                                {drivers.map(d => (
+                                  <option key={d._id} value={d._id}>{d.username}</option>
+                                ))}
+                              </SelectInput>
+
+                              <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                            </div>
+                          </OrderCard>
+                        ))}
+                    </OrdersGrid>
+                  ) : (
+                    <p>Nenhum pedido pendente.</p>
+                  )}
+
+                  {/* Concluídos */}
+                  <h3 style={{ marginTop:'1.5rem' }}>Pedidos Concluídos</h3>
+                  {driverOrders.filter(o => o.status === 'concluido').length ? (
+                    <OrdersGrid>
+                      {driverOrders
+                        .filter(o => o.status === 'concluido')
+                        .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map(order => (
+                          <OrderCard key={order._id} status={order.status}>
+                            <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
+                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                            <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+
+                            {order.cacambas?.length > 0 && (
+                              <CacambaSection>
+                                <h4>Caçambas Registradas:</h4>
+                                <CacambaList
+                                  cacambas={order.cacambas || []}
+                                  onImageClick={setModalImage}
+                                />
+                              </CacambaSection>
+                            )}
+
+                            {order.imageUrls?.length > 0 && (
+                              <div>
+                                <h4>Imagens Anexadas:</h4>
+                                <ImageContainer>
+                                  {order.imageUrls.map((url, i) => (
+                                    <OrderImage
+                                      key={i}
+                                      src={`${apiUrl}${url}`}
+                                      alt={`Imagem ${i + 1}`}
+                                      onClick={() => setModalImage(`${apiUrl}${url}`)}
+                                    />
+                                  ))}
+                                </ImageContainer>
+                              </div>
+                            )}
+
+                            <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
+                              <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                              {order.status === 'concluido' && (
+                                <ActionButton
+                                  type="button"
+                                  onClick={() => downloadOrderPdf(order)}
+                                  style={{ background:'#2563eb' }}
+                                >
+                                  Baixar Pedido
+                                </ActionButton>
+                              )}
+                            </div>
+                          </OrderCard>
+                        ))}
+                    </OrdersGrid>
+                  ) : (
+                    <p>Nenhum pedido concluído.</p>
+                  )}
+                </SectionContainer>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'motoristas' && (
+            <div>
+              <ActionButtons>
+                <Button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }}>+ Adicionar Motorista</Button>
+              </ActionButtons>
+              <h2>Gerenciar Motoristas</h2>
+              <DriverList>
+                {drivers.map(driver => (
+                  <DriverItem key={driver._id}>
+                    <span>{driver.username}</span>
+                    <div>
+                      <IconButton onClick={() => handleEditDriver(driver)}>✏️</IconButton>
+                      <IconButton  onClick={() => handleDeleteDriver(driver._id)}>🗑️</IconButton>
+                    </div>
+                  </DriverItem>
+                ))}
+              </DriverList>
+            </div>
+          )}
+        </ContentContainer>
+
+        {/* Modais */}
+        {isOrderModalOpen && (
+          <CreateOrderModal
+            onClose={() => setIsOrderModalOpen(false)}
+            onOrderCreated={fetchData}
+            drivers={drivers}
+          />
         )}
 
-        {activeTab === 'motoristas' && (
-          <div>
-            <ActionButtons>
-              <Button onClick={() => { setEditingDriver(null); setIsDriverModalOpen(true); }}>+ Adicionar Motorista</Button>
-            </ActionButtons>
-            <h2>Gerenciar Motoristas</h2>
-            <DriverList>
-              {drivers.map(driver => (
-                <DriverItem key={driver._id}>
-                  <span>{driver.username}</span>
-                  <div>
-                    <IconButton onClick={() => handleEditDriver(driver)}>✏️</IconButton>
-                    <IconButton  onClick={() => handleDeleteDriver(driver._id)}>🗑️</IconButton>
-                  </div>
-                </DriverItem>
-              ))}
-            </DriverList>
-          </div>
+        {isDriverModalOpen && (
+          <CreateDriverModal
+            onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
+            onDriverCreated={fetchData}
+            editingDriver={editingDriver}
+          />
         )}
-      </ContentContainer>
-
-      {/* Modais */}
-      {isOrderModalOpen && (
-        <CreateOrderModal
-          onClose={() => setIsOrderModalOpen(false)}
-          onOrderCreated={fetchData}
-          drivers={drivers}
-        />
-      )}
-
-      {isDriverModalOpen && (
-        <CreateDriverModal
-          onClose={() => { setIsDriverModalOpen(false); setEditingDriver(null); }}
-          onDriverCreated={fetchData}
-          editingDriver={editingDriver}
-        />
-      )}
-    </AdminContainer>
+      </AdminContainer>
+    </>
   );
 };
 

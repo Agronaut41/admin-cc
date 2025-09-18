@@ -78,6 +78,10 @@ const CacambaButton = styled.button`
   &:hover {
     background-color: #2563eb;
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const CacambaSection = styled.div`
@@ -91,6 +95,10 @@ const CacambaHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
 `;
 
 const ImageModal = ({ url, onClose }: { url: string, onClose: () => void }) => (
@@ -396,7 +404,7 @@ const DriverPage: React.FC = () => {
 
                 {/* Botão Google Maps */}
                 <CacambaButton
-                  style={{ background: '#ea4335', marginBottom: '0.5rem' }}
+                  style={{ background: '#ea4335', marginBottom: '0.5rem', marginTop: '0.5rem' }}
                   onClick={() => openGoogleMapsRoute(order.address, order.addressNumber, order.neighborhood)}
                 >
                   Ver rota no Google Maps
@@ -406,7 +414,7 @@ const DriverPage: React.FC = () => {
                   <>
                     <CacambaSection>
                       <CacambaHeader>
-                        <h4>Caçambas</h4>
+                        <h4 style={{ width: '100%' }}>Caçambas</h4>
                         <CacambaButton onClick={() => handleAddCacamba(order._id, order.type)}>
                           + Adicionar Caçamba
                         </CacambaButton>
