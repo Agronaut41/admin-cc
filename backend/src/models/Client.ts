@@ -8,15 +8,19 @@ export interface IClient extends Document {
   neighborhood: string;
   address: string;
   addressNumber: string;
+  cnpjCpf?: string; // novo
+  city?: string;    // novo
 }
 
 const ClientSchema: Schema = new Schema({
-  clientName: { type: String, required: true }, // Alterado de 'name' para 'clientName'
+  clientName: { type: String, required: true, trim: true },
   contactName: { type: String, required: true },
   contactNumber: { type: String, required: true },
   neighborhood: { type: String, required: true },
   address: { type: String, required: true },
   addressNumber: { type: String, required: true },
+  cnpjCpf: { type: String, trim: true, default: '' },
+  city: { type: String, trim: true, default: '' },
 }, {
   timestamps: true
 });

@@ -454,6 +454,8 @@ const AdminPage: React.FC = () => {
     [orders, selectedDriverId]
   );
 
+  console.log(driverOrders)
+
   const selectedDriver = drivers.find(d => d._id === selectedDriverId);
 
   if (loading) return <AdminContainer>Carregando...</AdminContainer>;
@@ -523,7 +525,7 @@ const AdminPage: React.FC = () => {
                         .map(order => (
                           <OrderCard key={order._id} status={order.status}>
                             <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}</p>
                             <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                             <p><strong>Prioridade:</strong> {order.priority}</p>
 
@@ -586,7 +588,7 @@ const AdminPage: React.FC = () => {
                         .map(order => (
                           <OrderCard key={order._id} status={order.status}>
                             <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}</p>
                             <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 
                             {order.cacambas?.length > 0 && (

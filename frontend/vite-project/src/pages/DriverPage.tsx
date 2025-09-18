@@ -399,7 +399,9 @@ const DriverPage: React.FC = () => {
               <OrderCard key={order._id} status={order.status}>
                 <h3>{order.clientName}</h3>
                 <p><strong>Tipo:</strong> {order.type}</p>
-                <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                <p>
+                  <strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}
+                </p>
                 <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 
                 {/* Botão Google Maps */}

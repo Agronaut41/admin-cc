@@ -8,6 +8,8 @@ export interface IClient {
   neighborhood: string;
   address: string;
   addressNumber: string;
+  cnpjCpf?: string; // novo
+  city?: string;    // novo
 }
 
 export interface IDriver {
@@ -29,17 +31,18 @@ export interface IOrder {
   _id: string;
   orderNumber: number;
   clientName: string;
+  cnpjCpf?: string;
   contactName: string;
   contactNumber: string;
   neighborhood: string;
   address: string;
   addressNumber: string;
-  type: 'entrega' | 'retirada' | 'troca';
+  city?: string; // adicionado
+  priority: number | 'baixa' | 'media' | 'alta';
   status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
-  motorista?: IDriver | null;
-  priority: number;
-  imageUrls: string[];
-  cacambas: ICacamba[];
+  motorista?: any;
+  imageUrls?: string[];
+  cacambas?: ICacamba[];
   createdAt: string;
   updatedAt: string;
 }

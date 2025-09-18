@@ -135,56 +135,71 @@ app.post('/login', async (req, res) => {
 // ==========================================================
 
 // Criar um novo pedido
-app.post('/orders', authenticateToken, isAdmin, async (req: AuthenticatedRequest, res) => {
+const mapPriority = (p: any) => {
+  if (typeof p === 'number') return p;
+  if (typeof p === 'string') {
+    const m = { baixa: 0, media: 1, alta: 2 } as const;
+    return p in m ? m[p as keyof typeof m] : 1;
+  }
+  return 1;
+};
+
+// POST /orders
+app.post('/orders', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const { clientId, type, motorista } = req.body;
+    const {
+      clientId,
+      clientName,
+      cnpjCpf,
+      city,
+      contactName,
+      contactNumber,
+      neighborhood,
+      address,
+      addressNumber,
+      type,
+      priority,
+      motorista
+    } = req.body;
 
-    if (!clientId) {
-      return res.status(400).json({ message: 'ID do cliente é obrigatório.' });
-    }
+    if (!clientId) return res.status(400).json({ message: 'clientId é obrigatório' });
+    if (!type) return res.status(400).json({ message: 'type é obrigatório' });
 
-    const client = await ClientModel.findById(clientId);
-    if (!client) {
-      return res.status(404).json({ message: 'Cliente não encontrado.' });
-    }
+    // calcula próximo número (ignora registros com null)
+    const last = await OrderModel.findOne({ orderNumber: { $ne: null } })
+      .sort({ orderNumber: -1 })
+      .select('orderNumber')
+      .lean();
+    const nextOrderNumber = (last?.orderNumber ?? 0) + 1;
 
-    const lastOrder = await OrderModel.findOne({ orderNumber: { $ne: null } }).sort({ orderNumber: -1 });
-    const nextOrderNumber = (lastOrder?.orderNumber || 0) + 1;
-
-    const newOrder = new OrderModel({
-      // Dados do cliente
-      clientId: client._id,
-      clientName: client.clientName,
-      contactName: client.contactName,
-      contactNumber: client.contactNumber,
-      neighborhood: client.neighborhood,
-      address: client.address,
-      addressNumber: client.addressNumber,
-
-      // Dados específicos do pedido
-      orderNumber: nextOrderNumber,
-      type: type,
+    const order = await OrderModel.create({
+      clientId,
+      clientName,
+      cnpjCpf: cnpjCpf || '',
+      city: city || '',
+      contactName,
+      contactNumber,
+      neighborhood,
+      address,
+      addressNumber,
+      type,
+      priority: mapPriority(priority),
       motorista: motorista || null,
+      orderNumber: nextOrderNumber
     });
 
-    await newOrder.save();
-    notifyDrivers(); // Notifica via WebSocket
-    // Envia push para o motorista atribuído (se houver)
-    if (newOrder.motorista) {
-      sendPushToDriver(newOrder.motorista.toString(), {
-        title: 'Novo Pedido Atribuído',
-        body: `Pedido #${newOrder.orderNumber} para ${newOrder.clientName}`,
-        data: { orderId: newOrder._id }
-      }).catch(e => console.error('Falha push criação pedido', e));
-    }
-    return res.status(201).json({ message: 'Pedido criado com sucesso!', order: newOrder });
+    // RETORNAR POPULADO E EMITIR ATUALIZAÇÃO
+    const populated = await OrderModel.findById(order._id)
+      .populate('motorista')
+      .populate('cacambas')
+      .lean();
 
-  } catch (error: any) {
-    console.error('Erro ao criar pedido:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: 'Erro de validação', details: error.errors });
-    }
-    return res.status(500).json({ message: 'Erro interno do servidor.' });
+    io.emit('orders_updated'); // <- faltava após criar
+
+    return res.status(201).json(populated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Erro ao criar pedido' });
   }
 });
 
@@ -208,29 +223,29 @@ app.get('/orders', authenticateToken, isAdmin, async (req, res) => {
     }
 });
 
-// Atualizar um pedido
+// PATCH /orders/:id
 app.patch('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
+  try {
     const { id } = req.params;
-    const updates = req.body;
-    try {
-        const prevOrder = await OrderModel.findById(id);
-        const updatedOrder = await OrderModel.findByIdAndUpdate(id, { ...updates, updatedAt: Date.now() }, { new: true });
-        if (!updatedOrder) {
-            return res.status(404).json({ message: 'Pedido não encontrado.' });
-        }
-        // Se motorista foi definido ou alterado, notifica via push
-        if (updatedOrder.motorista && (!prevOrder?.motorista || prevOrder.motorista.toString() !== updatedOrder.motorista.toString())) {
-          sendPushToDriver(updatedOrder.motorista.toString(), {
-            title: 'Pedido Atribuído / Atualizado',
-            body: `Pedido #${updatedOrder.orderNumber} para ${updatedOrder.clientName}`,
-            data: { orderId: updatedOrder._id }
-          }).catch(e => console.error('Falha push update pedido', e));
-        }
-        return res.status(200).json({ message: 'Pedido atualizado com sucesso!', order: updatedOrder });
-    } catch (error) {
-        console.error('Erro ao atualizar pedido:', error);
-        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    const updates: any = {};
+    const fields = [
+      'clientId','clientName','cnpjCpf','city',
+      'contactName','contactNumber','neighborhood',
+      'address','addressNumber','type','status','motorista'
+    ];
+    for (const f of fields) if (req.body[f] !== undefined) updates[f] = req.body[f];
+
+    if (req.body.priority !== undefined) {
+      updates.priority = mapPriority(req.body.priority);
     }
+
+    const updated = await OrderModel.findByIdAndUpdate(id, updates, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Pedido não encontrado' });
+    return res.json(updated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Erro ao atualizar pedido' });
+  }
 });
 
 // Excluir um pedido
@@ -265,48 +280,64 @@ app.get('/clients', authenticateToken, isAdmin, async (req: express.Request, res
 });
 
 // Criar novo cliente
-app.post('/clients', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
-    try {
-        const { clientName, contactName, contactNumber, neighborhood, address, addressNumber } = req.body;
-        
-        // Validar dados obrigatórios
-        if (!clientName || !contactName || !contactNumber || !neighborhood || !address || !addressNumber) {
-            return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
-        }
+app.post('/clients', authenticateToken, async (req, res) => {
+  try {
+    const {
+      clientName,
+      contactName,
+      contactNumber,
+      neighborhood,
+      address,
+      addressNumber,
+      cnpjCpf,     // novo
+      city         // novo
+    } = req.body;
 
-        const client = new ClientModel({
-            clientName, // Alterado de 'name' para 'clientName'
-            contactName,
-            contactNumber,
-            neighborhood,
-            address,
-            addressNumber
-        });
+    const client = await ClientModel.create({
+      clientName,
+      contactName,
+      contactNumber,
+      neighborhood,
+      address,
+      addressNumber,
+      cnpjCpf: cnpjCpf || '',
+      city: city || ''
+    });
 
-        await client.save();
-        res.status(201).json(client);
-    } catch (error) {
-        console.error('Erro ao criar cliente:', error);
-        res.status(500).json({ message: 'Erro ao criar cliente.' });
-    }
+    return res.status(201).json(client);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Erro ao criar cliente' });
+  }
 });
 
-// Atualizar cliente
-app.patch('/clients/:id', authenticateToken, isAdmin, async (req: express.Request, res: express.Response) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
+// PATCH /clients/:id
+app.patch('/clients/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates: any = {};
 
-        const client = await ClientModel.findByIdAndUpdate(id, updates, { new: true });
-        if (!client) {
-            return res.status(404).json({ message: 'Cliente não encontrado.' });
-        }
-
-        res.status(200).json(client);
-    } catch (error) {
-        console.error('Erro ao atualizar cliente:', error);
-        res.status(500).json({ message: 'Erro ao atualizar cliente.' });
+    const fields = [
+      'clientName',
+      'contactName',
+      'contactNumber',
+      'neighborhood',
+      'address',
+      'addressNumber',
+      'cnpjCpf', // novo
+      'city'     // novo
+    ];
+    for (const f of fields) {
+      if (req.body[f] !== undefined) updates[f] = req.body[f];
     }
+
+    const updated = await ClientModel.findByIdAndUpdate(id, updates, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Cliente não encontrado' });
+    return res.json(updated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Erro ao atualizar cliente' });
+  }
 });
 
 // Excluir cliente

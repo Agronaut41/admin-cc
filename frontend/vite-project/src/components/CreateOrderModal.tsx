@@ -2,15 +2,58 @@ import React, { useState, useEffect, type FormEvent } from 'react';
 import styled from 'styled-components';
 import type { IDriver, IClient } from '../interfaces';
 
+// Overlay ocupa a tela inteira com padding e safe areas
 const ModalOverlay = styled.div`
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex; align-items: center; justify-content: center; z-index: 100;
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  z-index: 1000;
+
+  @media (max-width: 768px) {
+    align-items: stretch; /* ocupa altura total no mobile */
+  }
 `;
+
+// Conteúdo com limite de altura e scroll interno
 const ModalContent = styled.div`
-  background-color: white; border-radius: 8px; padding: 1.5rem 2rem;
-  width: 100%; max-width: 500px; margin: 0 1rem;
+  background: #fff;
+  border-radius: 12px;
+  width: min(720px, 92vw);
+  max-height: min(88dvh, 840px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* cabeçalho fixo, corpo rolável */
+
+  @media (max-width: 768px) {
+    width: 100vw;
+    height: 100dvh;        /* usa toda a altura útil */
+    max-height: 100dvh;
+    border-radius: 0;      /* full-screen modal no mobile */
+  }
 `;
+
+// Cabeçalho do modal (se já tiver um, mantenha e ajuste classes/estilos)
+const ModalHeader = styled.div`
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex: 0 0 auto;
+`;
+
+// Corpo rolável
+const ModalBody = styled.div`
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+
+  /* melhora o scroll em iOS */
+  -webkit-overflow-scrolling: touch;
+`;
+
 const Title = styled.h2`
   font-size: 1.5rem; font-weight: 600; margin: 0 0 1.5rem 0; color: #111827;
 `;
@@ -59,15 +102,18 @@ interface CreateOrderModalProps {
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCreated, drivers }) => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     clientName: '',
+    cnpjCpf: '',
     contactName: '',
     contactNumber: '',
     neighborhood: '',
     address: '',
     addressNumber: '',
-    type: 'entrega',
+    city: '',
+    type: 'entrega' as 'entrega' | 'retirada' | 'troca',
     motorista: '',
+    priority: 0 as number, // 0=baixa, 1=media, 2=alta
   });
   const [error, setError] = useState('');
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -93,21 +139,31 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     if (clientId) {
       const selectedClient = clients.find(c => c._id === clientId);
       if (selectedClient) {
-        setFormData(prev => ({
+        setForm(prev => ({
           ...prev,
-          clientName: selectedClient.clientName,
-          contactName: selectedClient.contactName,
-          contactNumber: selectedClient.contactNumber,
-          neighborhood: selectedClient.neighborhood,
-          address: selectedClient.address,
-          addressNumber: selectedClient.addressNumber,
+          clientName: selectedClient.clientName || '',
+          cnpjCpf: selectedClient.cnpjCpf ?? '',
+          contactName: selectedClient.contactName || '',
+          contactNumber: selectedClient.contactNumber || '',
+          neighborhood: selectedClient.neighborhood || '',
+          address: selectedClient.address || '',
+          addressNumber: selectedClient.addressNumber || '',
+          city: selectedClient.city ?? ''
         }));
       }
     } else {
-      // Limpa o formulário se nenhum cliente for selecionado
-      setFormData({
-        clientName: '', contactName: '', contactNumber: '', neighborhood: '',
-        address: '', addressNumber: '', type: 'entrega', motorista: '',
+      setForm({
+        clientName: '',
+        cnpjCpf: '',
+        contactName: '',
+        contactNumber: '',
+        neighborhood: '',
+        address: '',
+        addressNumber: '',
+        city: '',
+        type: 'entrega',
+        motorista: '',
+        priority: 0, // inicia como Baixa
       });
     }
   };
@@ -122,13 +178,27 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     }
 
     const token = localStorage.getItem('token');
+    // Ao enviar, inclua city no body:
     const response = await fetch(`${apiUrl}/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ ...formData, clientId: selectedClientId }),
+      body: JSON.stringify({
+        clientId: selectedClientId,           // OBRIGATÓRIO
+        clientName: form.clientName,
+        cnpjCpf: form.cnpjCpf,
+        city: form.city,
+        contactName: form.contactName,
+        contactNumber: form.contactNumber,
+        neighborhood: form.neighborhood,
+        address: form.address,
+        addressNumber: form.addressNumber,
+        type: form.type,                      // OBRIGATÓRIO
+        priority: form.priority,              // número
+        motorista: form.motorista || undefined
+      }),
     });
 
     if (response.ok) {
@@ -141,76 +211,134 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
   };
 
   return (
-    <ModalOverlay>
-      <ModalContent>
-        <Title>Criar Novo Pedido</Title>
-        <Form onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label>Selecione o Cliente</Label>
-            <Select value={selectedClientId} onChange={handleClientChange} required>
-              <option value="">-- Escolha um cliente --</option>
-              {clients.map(client => (
-                <option key={client._id} value={client._id}>{client.clientName}</option>
-              ))}
-            </Select>
-          </FormGroup>
+    <ModalOverlay onClick={onClose}>
+      <ModalContent onClick={(e) => e.stopPropagation()}>
+        <ModalHeader>
+          <Title>Criar Novo Pedido</Title>
+        </ModalHeader>
 
-          {selectedClientId && (
-            <>
-              <FormGroup>
-                <Label>Nome do Contato</Label>
-                <Input type="text" value={formData.contactName}/>
-              </FormGroup>
-              <FormGroup>
-                <Label>Número do Contato</Label>
-                <Input type="text" value={formData.contactNumber}/>
-              </FormGroup>
-              <FormGroup>
-                <Label>Bairro</Label>
-                <Input type="text" value={formData.neighborhood}/>
-              </FormGroup>
-              <FormGroup>
-              <FormGroup>
-                <Label>Endereço</Label>
-                <Input type="text" value={formData.address} />
-              </FormGroup>
-                <Label>Número</Label>
-                <Input type="text" value={formData.addressNumber}/>
-              </FormGroup>
-              <FormGroup>
-                <Label>Tipo de Pedido</Label>
-                <Select
-                  value={formData.type}
-                  onChange={e => setFormData(prev => ({ ...prev, type: e.target.value as 'entrega' | 'retirada' | 'troca' }))}
-                >
-                  <option value="entrega">Entrega</option>
-                  <option value="retirada">Retirada</option>
-                  <option value="troca">Troca</option>
-                </Select>
-              </FormGroup>
-              <FormGroup>
-                <Label>Atribuir Motorista</Label>
-                <Select
-                  value={formData.motorista}
-                  onChange={e => setFormData(prev => ({ ...prev, motorista: e.target.value }))}
-                  required={true}
-                >
-                  <option value="">Nenhum</option>
-                  {drivers.map(driver => (
-                    <option key={driver._id} value={driver._id}>{driver.username}</option>
-                  ))}
-                </Select>
-              </FormGroup>
-            </>
-          )}
+        <ModalBody>
+          <Form onSubmit={handleSubmit}>
+            <FormGroup>
+              <Label>Selecione o Cliente</Label>
+              <Select value={selectedClientId} onChange={handleClientChange} required>
+                <option value="">-- Escolha um cliente --</option>
+                {clients.map(client => (
+                  <option key={client._id} value={client._id}>{client.clientName}</option>
+                ))}
+              </Select>
+            </FormGroup>
 
-          {error && <ErrorMessage>{error}</ErrorMessage>}
+            {selectedClientId && (
+              <>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 260px' }}>
+                    <Label>Nome do Cliente</Label>
+                    <Input
+                      type="text"
+                      value={form.clientName}
+                      onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 260px' }}>
+                    <Label>CNPJ/CPF</Label>
+                    <Input
+                      type="text"
+                      value={form.cnpjCpf}
+                      onChange={e => setForm(f => ({ ...f, cnpjCpf: e.target.value }))}
+                      placeholder="00.000.000/0000-00 ou 000.000.000-00"
+                    />
+                  </div>
+                </div>
 
-          <ButtonGroup>
-            <SubmitButton type="submit">Criar Pedido</SubmitButton>
-            <CancelButton type="button" onClick={onClose}>Cancelar</CancelButton>
-          </ButtonGroup>
-        </Form>
+                <FormGroup>
+                  <Label>Nome do Contato</Label>
+                  <Input type="text" value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Número do Contato</Label>
+                  <Input type="text" value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Bairro</Label>
+                  <Input type="text" value={form.neighborhood} onChange={e => setForm(f => ({ ...f, neighborhood: e.target.value }))} />
+                </FormGroup>
+
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 260px' }}>
+                    <Label>Endereço</Label>
+                    <Input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+                  </div>
+                  <div style={{ flex: '1 1 150px' }}>
+                    <Label>Número</Label>
+                    <Input type="text" value={form.addressNumber} onChange={e => setForm(f => ({ ...f, addressNumber: e.target.value }))} />
+                  </div>
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Label>Cidade</Label>
+                    <Select
+                      value={form.city}
+                      onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                      required
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="São José dos Campos">São José dos Campos</option>
+                      <option value="Jacareí">Jacareí</option>
+                      <option value="Caçapava">Caçapava</option>
+                    </Select>
+                  </div>
+                </div>
+
+                <FormGroup>
+                  <Label>Tipo de Pedido</Label>
+                  <Select
+                    value={form.type}
+                    onChange={e => setForm(prev => ({ ...prev, type: e.target.value as 'entrega' | 'retirada' | 'troca' }))}
+                  >
+                    <option value="entrega">Entrega</option>
+                    <option value="retirada">Retirada</option>
+                    <option value="troca">Troca</option>
+                  </Select>
+                </FormGroup>
+                <FormGroup>
+                  <Label>Atribuir Motorista</Label>
+                  <Select
+                    value={form.motorista}
+                    onChange={e => setForm(prev => ({ ...prev, motorista: e.target.value }))}
+                    required={true}
+                  >
+                    <option value="">Selecione...</option>
+                    {drivers.map(driver => (
+                      <option key={driver._id} value={driver._id}>{driver.username}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+
+                <div style={{ display:'flex', gap: 16, flexWrap:'wrap' }}>
+                  <div style={{ flex:'1 1 220px' }}>
+                    <Label>Prioridade</Label>
+                    <Select
+                      value={form.priority}
+                      onChange={e => setForm(f => ({ ...f, priority: Number(e.target.value) }))}
+                      required
+                    >
+                      <option value={0}>Baixa</option>
+                      <option value={1}>Média</option>
+                      <option value={2}>Alta</option>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {error && <ErrorMessage>{error}</ErrorMessage>}
+
+            <ButtonGroup>
+              <SubmitButton type="submit">Criar Pedido</SubmitButton>
+              <CancelButton type="button" onClick={onClose}>Cancelar</CancelButton>
+            </ButtonGroup>
+          </Form>
+        </ModalBody>
       </ModalContent>
     </ModalOverlay>
   );

@@ -155,7 +155,7 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete, onVi
             </DataItem>
             <DataItem style={{ flex: 2 }}>
               <DataLabel>Endereço:</DataLabel>
-              <DataValue>{`${client.address}, ${client.addressNumber}`}</DataValue>
+              <DataValue>{`${client.address}, ${client.addressNumber} - ${client.neighborhood} - ${client.city}`}</DataValue>
             </DataItem>
           </InfoSection>
 

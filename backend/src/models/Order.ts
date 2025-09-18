@@ -24,12 +24,14 @@ export interface IOrder extends Document {
 const OrderSchema: Schema = new Schema({
   orderNumber: { type: Number, unique: true },
   // Campos que virão do cliente (não são mais obrigatórios no pedido)
-  clientName: { type: String },
-  contactName: { type: String },
-  contactNumber: { type: String },
-  neighborhood: { type: String },
-  address: { type: String },
-  addressNumber: { type: String },
+  clientName: { type: String, required: true, trim: true },
+  cnpjCpf: { type: String, trim: true, default: '' },
+  city: { type: String, trim: true, default: '' }, // <-- ADICIONADO
+  contactName: { type: String, trim: true, default: '' },
+  contactNumber: { type: String, trim: true, default: '' },
+  neighborhood: { type: String, trim: true, default: '' },
+  address: { type: String, trim: true, default: '' },
+  addressNumber: { type: String, trim: true, default: '' },
 
   // Referência obrigatória ao cliente
   clientId: {
