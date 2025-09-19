@@ -27,18 +27,22 @@ export interface ICacamba {
   createdAt: string;
 }
 
+export type OrderType = 'entrega' | 'retirada' | 'troca';
+
 export interface IOrder {
   _id: string;
-  orderNumber: number;
+  orderNumber: number | null;
+  clientId?: string;
   clientName: string;
   cnpjCpf?: string;
+  city?: string;
   contactName: string;
   contactNumber: string;
   neighborhood: string;
   address: string;
   addressNumber: string;
-  city?: string; // adicionado
-  priority: number | 'baixa' | 'media' | 'alta';
+  type: OrderType;
+  priority: number;
   status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
   motorista?: any;
   imageUrls?: string[];
