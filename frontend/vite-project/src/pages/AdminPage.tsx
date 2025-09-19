@@ -529,7 +529,7 @@ const AdminPage: React.FC = () => {
                             <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                             <p><strong>Prioridade:</strong> {order.priority}</p>
 
-                            {order.cacambas?.length > 0 && (
+                            {((order.cacambas?.length ?? 0) > 0) && (
                               <CacambaSection>
                                 <h4>Caçambas Registradas:</h4>
                                 <CacambaList
@@ -539,11 +539,11 @@ const AdminPage: React.FC = () => {
                               </CacambaSection>
                             )}
 
-                            {order.imageUrls?.length > 0 && (
+                            {((order.imageUrls?.length ?? 0) > 0) && (
                               <div>
                                 <h4>Imagens Anexadas:</h4>
                                 <ImageContainer>
-                                  {order.imageUrls.map((url, i) => (
+                                  {(order.imageUrls ?? []).map((url, i) => (
                                     <OrderImage
                                       key={i}
                                       src={`${apiUrl}${url}`}
@@ -591,7 +591,7 @@ const AdminPage: React.FC = () => {
                             <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}</p>
                             <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 
-                            {order.cacambas?.length > 0 && (
+                            {((order.cacambas?.length ?? 0) > 0) && (
                               <CacambaSection>
                                 <h4>Caçambas Registradas:</h4>
                                 <CacambaList
@@ -601,11 +601,11 @@ const AdminPage: React.FC = () => {
                               </CacambaSection>
                             )}
 
-                            {order.imageUrls?.length > 0 && (
+                            {((order.imageUrls?.length ?? 0) > 0) && (
                               <div>
                                 <h4>Imagens Anexadas:</h4>
                                 <ImageContainer>
-                                  {order.imageUrls.map((url, i) => (
+                                  {(order.imageUrls ?? []).map((url, i) => (
                                     <OrderImage
                                       key={i}
                                       src={`${apiUrl}${url}`}

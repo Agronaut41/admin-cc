@@ -341,10 +341,10 @@ const DriverPage: React.FC = () => {
   };
 
   const handleCacambaAdded = (cacamba: ICacamba) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order._id === cacamba.orderId 
-          ? { ...order, cacambas: [...order.cacambas, cacamba] }
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order._id === cacamba.orderId
+          ? { ...order, cacambas: [ ...(order.cacambas ?? []), cacamba ] } // <- evita undefined
           : order
       )
     );
