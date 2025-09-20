@@ -152,6 +152,7 @@ app.post('/orders', authenticateToken, isAdmin, async (req, res) => {
       clientName,
       cnpjCpf,
       city,
+      cep, // ADICIONADO
       contactName,
       contactNumber,
       neighborhood,
@@ -177,6 +178,7 @@ app.post('/orders', authenticateToken, isAdmin, async (req, res) => {
       clientName,
       cnpjCpf: cnpjCpf || '',
       city: city || '',
+      cep: cep || '', // ADICIONADO
       contactName,
       contactNumber,
       neighborhood,
@@ -229,18 +231,29 @@ app.patch('/orders/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const updates: any = {};
     const fields = [
-      'clientId','clientName','cnpjCpf','city',
+      'clientId','clientName','cnpjCpf','city','cep', // ADICIONADO
       'contactName','contactNumber','neighborhood',
       'address','addressNumber','type','status','motorista'
     ];
     for (const f of fields) if (req.body[f] !== undefined) updates[f] = req.body[f];
-
-    if (req.body.priority !== undefined) {
-      updates.priority = mapPriority(req.body.priority);
-    }
+    if (req.body.priority !== undefined) updates.priority = mapPriority(req.body.priority);
 
     const updated = await OrderModel.findByIdAndUpdate(id, updates, { new: true });
     if (!updated) return res.status(404).json({ message: 'Pedido não encontrado' });
+
+    if (updated.status === 'concluido') {
+      io.emit('order_completed', {
+        orderId: updated._id,
+        orderNumber: updated.orderNumber,
+        clientName: updated.clientName,
+        address: updated.address,
+        addressNumber: updated.addressNumber,
+        neighborhood: updated.neighborhood,
+        city: updated.city || '',
+        cep: updated.cep || '' // ADICIONADO NO PAYLOAD
+      });
+    }
+
     return res.json(updated);
   } catch (e) {
     console.error(e);
@@ -289,8 +302,9 @@ app.post('/clients', authenticateToken, async (req, res) => {
       neighborhood,
       address,
       addressNumber,
-      cnpjCpf,     // novo
-      city         // novo
+      cnpjCpf,
+      city,
+      cep // ADICIONADO
     } = req.body;
 
     const client = await ClientModel.create({
@@ -301,7 +315,8 @@ app.post('/clients', authenticateToken, async (req, res) => {
       address,
       addressNumber,
       cnpjCpf: cnpjCpf || '',
-      city: city || ''
+      city: city || '',
+      cep: cep || '' // ADICIONADO
     });
 
     return res.status(201).json(client);
@@ -316,20 +331,12 @@ app.patch('/clients/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updates: any = {};
-
     const fields = [
-      'clientName',
-      'contactName',
-      'contactNumber',
-      'neighborhood',
-      'address',
-      'addressNumber',
-      'cnpjCpf', // novo
-      'city'     // novo
+      'clientName','contactName','contactNumber',
+      'neighborhood','address','addressNumber',
+      'cnpjCpf','city','cep' // ADICIONADO
     ];
-    for (const f of fields) {
-      if (req.body[f] !== undefined) updates[f] = req.body[f];
-    }
+    for (const f of fields) if (req.body[f] !== undefined) updates[f] = req.body[f];
 
     const updated = await ClientModel.findByIdAndUpdate(id, updates, { new: true });
     if (!updated) return res.status(404).json({ message: 'Cliente não encontrado' });

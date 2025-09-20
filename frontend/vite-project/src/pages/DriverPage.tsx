@@ -400,7 +400,7 @@ const DriverPage: React.FC = () => {
                 <h3>{order.clientName}</h3>
                 <p><strong>Tipo:</strong> {order.type}</p>
                 <p>
-                  <strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}
+                  <strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city} - CEP {order.cep}
                 </p>
                 <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
 

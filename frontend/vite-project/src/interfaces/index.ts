@@ -2,14 +2,15 @@
 
 export interface IClient {
   _id: string;
-  clientName: string; // Garanta que este campo se chama clientName
+  clientName: string;
   contactName: string;
   contactNumber: string;
   neighborhood: string;
   address: string;
   addressNumber: string;
-  cnpjCpf?: string; // novo
-  city?: string;    // novo
+  cnpjCpf?: string;
+  city?: string;
+  cep?: string; // ADICIONADO
 }
 
 export interface IDriver {
@@ -36,6 +37,7 @@ export interface IOrder {
   clientName: string;
   cnpjCpf?: string;
   city?: string;
+  cep?: string; // ADICIONADO
   contactName: string;
   contactNumber: string;
   neighborhood: string;
@@ -47,6 +49,5 @@ export interface IOrder {
   motorista?: any;
   imageUrls?: string[];
   cacambas?: ICacamba[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
 }

@@ -111,9 +111,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     address: '',
     addressNumber: '',
     city: '',
+    cep: '', // ADICIONADO
     type: 'entrega' as 'entrega' | 'retirada' | 'troca',
     motorista: '',
-    priority: 0 as number, // 0=baixa, 1=media, 2=alta
+    priority: 0
   });
   const [error, setError] = useState('');
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -132,6 +133,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     fetchClients();
   }, []);
 
+  // ao selecionar cliente, preencher CEP também
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = e.target.value;
     setSelectedClientId(clientId);
@@ -148,7 +150,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
           neighborhood: selectedClient.neighborhood || '',
           address: selectedClient.address || '',
           addressNumber: selectedClient.addressNumber || '',
-          city: selectedClient.city ?? ''
+          city: selectedClient.city ?? '',
+          cep: selectedClient.cep ?? '' // ADICIONADO
         }));
       }
     } else {
@@ -161,9 +164,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
         address: '',
         addressNumber: '',
         city: '',
+        cep: '', // ADICIONADO
         type: 'entrega',
         motorista: '',
-        priority: 0, // inicia como Baixa
+        priority: 0
       });
     }
   };
@@ -178,7 +182,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     }
 
     const token = localStorage.getItem('token');
-    // Ao enviar, inclua city no body:
+    // envio inclui cep
     const response = await fetch(`${apiUrl}/orders`, {
       method: 'POST',
       headers: {
@@ -190,6 +194,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
         clientName: form.clientName,
         cnpjCpf: form.cnpjCpf,
         city: form.city,
+        cep: form.cep, // ADICIONADO
         contactName: form.contactName,
         contactNumber: form.contactNumber,
         neighborhood: form.neighborhood,
@@ -286,6 +291,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                       <option value="Jacareí">Jacareí</option>
                       <option value="Caçapava">Caçapava</option>
                     </Select>
+                  </div>
+                  <div style={{ flex: '1 1 180px' }}>
+                    <Label>CEP</Label>
+                    <Input type="text" value={form.cep} onChange={e => setForm(f => ({ ...f, cep: e.target.value }))} placeholder="00000-000" />
                   </div>
                 </div>
 

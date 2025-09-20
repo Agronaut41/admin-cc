@@ -99,8 +99,9 @@ interface Props {
 const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
     clientName: '',
-    cnpjCpf: '',   // novo
-    city: '',      // novo
+    cnpjCpf: '',
+    city: '',
+    cep: '', // ADICIONADO
     contactName: '',
     contactNumber: '',
     neighborhood: '',
@@ -113,8 +114,9 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
       setFormData(prev => ({
         ...prev,
         clientName: initialData.clientName || '',
-        cnpjCpf: initialData.cnpjCpf || '',   // novo
-        city: initialData.city || '',         // novo
+        cnpjCpf: initialData.cnpjCpf || '',
+        city: initialData.city || '',
+        cep: initialData.cep || '', // ADICIONADO
         contactName: initialData.contactName || '',
         contactNumber: initialData.contactNumber || '',
         neighborhood: initialData.neighborhood || '',
@@ -131,7 +133,7 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData); // envia cnpjCpf e city também
+    onSubmit(formData); // envia também city e cep
   };
 
   return (
@@ -178,6 +180,18 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
               <option value="Jacareí">Jacareí</option>
               <option value="Caçapava">Caçapava</option>
             </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="cep">CEP</Label>
+            <Input
+              id="cep"
+              name="cep"
+              type="text"
+              value={formData.cep}
+              onChange={handleChange}
+              placeholder="00000-000"
+            />
           </FormGroup>
         </FormRow>
 

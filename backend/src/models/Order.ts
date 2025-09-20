@@ -19,14 +19,18 @@ export interface IOrder extends Document {
   createdAt: Date;
   updatedAt: Date;
   clientId: mongoose.Types.ObjectId; // Referência ao cliente
+  cnpjCpf?: string;
+  city?: string;
+  cep?: string; // ADICIONADO
 }
 
-const OrderSchema: Schema = new Schema({
+const OrderSchema: Schema = new Schema<IOrder>({
   orderNumber: { type: Number, unique: true },
   // Campos que virão do cliente (não são mais obrigatórios no pedido)
   clientName: { type: String, required: true, trim: true },
   cnpjCpf: { type: String, trim: true, default: '' },
-  city: { type: String, trim: true, default: '' }, // <-- ADICIONADO
+  city: { type: String, trim: true, default: '' },
+  cep: { type: String, trim: true, default: '' }, // ADICIONADO
   contactName: { type: String, trim: true, default: '' },
   contactNumber: { type: String, trim: true, default: '' },
   neighborhood: { type: String, trim: true, default: '' },
