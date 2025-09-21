@@ -79,6 +79,11 @@ const OrderImage = styled.img`
   cursor: pointer;
 `;
 
+const DateText = styled.span`
+  font-weight: 500;
+  color: #111827;
+`;
+
 interface ClientOrdersModalProps {
   client: IClient;
   onClose: () => void;
@@ -121,6 +126,9 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
 
   const apiUrl = import.meta.env.VITE_API_URL;
 
+  // Helper local (dentro do componente)
+  const parseDate = (v?: string) => (v ? new Date(v) : undefined);
+
   return (
     <ModalOverlay>
       {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
@@ -162,8 +170,8 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
           {orders.length > 0 ? (
             orders.map(order => {
               // Onde cria a data para exibir no modal, garanta fallback seguro:
-              const completedAtStr = order.updatedAt ?? order.createdAt ?? '';
-              const completedAt = new Date(completedAtStr); // recebe string (nunca undefined)
+              const completedAt = order.updatedAt ?? order.createdAt;
+              const completedAtDate = completedAt ? new Date(completedAt) : undefined;
 
               return (
                 <OrderCard key={order._id} status={order.status}>
@@ -173,7 +181,7 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
                   <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
                   <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
                   <p><strong>Status:</strong> {order.status} | <strong>Tipo:</strong> {order.type}</p>
-                  <p><strong>Data de Conclusão:</strong> {isNaN(completedAt.getTime()) ? '-' : completedAt.toLocaleString('pt-BR')}</p>
+                  <p><strong>Data de Conclusão:</strong> <DateText>{completedAtDate ? completedAtDate.toLocaleString('pt-BR') : '-'}</DateText></p>
                   
                   {order.cacambas && order.cacambas.length > 0 && (
                     <CacambaSection>
