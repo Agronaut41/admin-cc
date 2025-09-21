@@ -160,41 +160,48 @@ const ClientOrdersModal: React.FC<ClientOrdersModalProps> = ({ client, onClose }
 
         <OrdersList>
           {orders.length > 0 ? (
-            orders.map(order => (
-              <OrderCard key={order._id} status={order.status}>
-                <h3>
-                  Pedido #{order.orderNumber} - {new Date(order.createdAt).toLocaleDateString('pt-BR')}
-                </h3>
-                <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
-                <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
-                <p><strong>Status:</strong> {order.status} | <strong>Tipo:</strong> {order.type}</p>
-                
-                {order.cacambas && order.cacambas.length > 0 && (
-                  <CacambaSection>
-                    <CacambaList
-                      cacambas={order.cacambas || []}
-                      onImageClick={setModalImage} // Passe a função aqui
-                    />
-                  </CacambaSection>
-                )}
+            orders.map(order => {
+              // Onde cria a data para exibir no modal, garanta fallback seguro:
+              const completedAtStr = order.updatedAt ?? order.createdAt ?? '';
+              const completedAt = new Date(completedAtStr); // recebe string (nunca undefined)
 
-                {order.imageUrls && order.imageUrls.length > 0 && (
-                  <div>
-                    <h4>Imagens Anexadas ao Pedido:</h4>
-                    <ImageContainer>
-                      {order.imageUrls.map((url, index) => (
-                        <OrderImage
-                          key={index}
-                          src={`${apiUrl}${url}`}
-                          alt={`Imagem ${index + 1}`}
-                          onClick={() => setModalImage(`${apiUrl}${url}`)}
-                        />
-                      ))}
-                    </ImageContainer>
-                  </div>
-                )}
-              </OrderCard>
-            ))
+              return (
+                <OrderCard key={order._id} status={order.status}>
+                  <h3>
+                    Pedido #{order.orderNumber} - {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                  </h3>
+                  <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood}</p>
+                  <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                  <p><strong>Status:</strong> {order.status} | <strong>Tipo:</strong> {order.type}</p>
+                  <p><strong>Data de Conclusão:</strong> {isNaN(completedAt.getTime()) ? '-' : completedAt.toLocaleString('pt-BR')}</p>
+                  
+                  {order.cacambas && order.cacambas.length > 0 && (
+                    <CacambaSection>
+                      <CacambaList
+                        cacambas={order.cacambas || []}
+                        onImageClick={setModalImage} // Passe a função aqui
+                      />
+                    </CacambaSection>
+                  )}
+
+                  {order.imageUrls && order.imageUrls.length > 0 && (
+                    <div>
+                      <h4>Imagens Anexadas ao Pedido:</h4>
+                      <ImageContainer>
+                        {order.imageUrls.map((url, index) => (
+                          <OrderImage
+                            key={index}
+                            src={`${apiUrl}${url}`}
+                            alt={`Imagem ${index + 1}`}
+                            onClick={() => setModalImage(`${apiUrl}${url}`)}
+                          />
+                        ))}
+                      </ImageContainer>
+                    </div>
+                  )}
+                </OrderCard>
+              );
+            })
           ) : (
             <p>Nenhum pedido encontrado para os filtros selecionados.</p>
           )}

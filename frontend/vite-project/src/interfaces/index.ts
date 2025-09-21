@@ -37,17 +37,18 @@ export interface IOrder {
   clientName: string;
   cnpjCpf?: string;
   city?: string;
-  cep?: string; // ADICIONADO
+  cep?: string;
   contactName: string;
   contactNumber: string;
   neighborhood: string;
   address: string;
   addressNumber: string;
-  type: OrderType;
+  type: 'entrega' | 'retirada' | 'troca';
   priority: number;
   status: 'pendente' | 'em_andamento' | 'concluido' | 'cancelado';
   motorista?: any;
   imageUrls?: string[];
   cacambas?: ICacamba[];
   createdAt?: string;
+  updatedAt?: string; // adicionado para evitar erro no orderPdf e modais
 }

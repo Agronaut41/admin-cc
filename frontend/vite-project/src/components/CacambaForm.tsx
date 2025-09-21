@@ -147,8 +147,9 @@ const CacambaForm: React.FC<CacambaFormProps> = (props) => {
   const [local, setLocal] = useState<'via_publica' | 'canteiro_obra'>('via_publica');
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [error, setError] = useState('');             // ErrorMessage único
+  // REMOVA o estado não usado:
+  // const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Limpa a mensagem vermelha ao alterar a seleção
@@ -173,7 +174,8 @@ const CacambaForm: React.FC<CacambaFormProps> = (props) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitAttempted(true);
+    // REMOVA o uso do submitAttempted
+    // setSubmitAttempted(true);
 
     if (!numero.trim()) {
       setError('Número da caçamba é obrigatório');
