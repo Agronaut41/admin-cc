@@ -377,6 +377,34 @@ const AdminPage: React.FC = () => {
   const [selectedDriverId, setSelectedDriverId] = useState<string>(''); // NOVO
   const [completedPage, setCompletedPage] = useState(1);
   const PAGE_SIZE = 5;
+
+  // Ordena concluídos do mais recente para o mais antigo
+  const completedOrders = useMemo(() => {
+    const completed = orders.filter(o => o.status === 'concluido');
+    return [...completed].sort((a, b) => {
+      const aTime = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+      const bTime = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+
+      if (aTime !== bTime) return bTime - aTime;
+
+      // fallback pelo orderNumber (maior primeiro)
+      const an = typeof a.orderNumber === 'number' ? a.orderNumber : -Infinity;
+      const bn = typeof b.orderNumber === 'number' ? b.orderNumber : -Infinity;
+      return bn - an;
+    });
+  }, [orders]);
+
+  const totalCompletedPages = Math.max(1, Math.ceil(completedOrders.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (completedPage > totalCompletedPages) setCompletedPage(totalCompletedPages);
+  }, [completedOrders.length, totalCompletedPages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleCompleted = useMemo(() => {
+    const start = (completedPage - 1) * PAGE_SIZE;
+    return completedOrders.slice(start, start + PAGE_SIZE);
+  }, [completedOrders, completedPage, PAGE_SIZE]);
+
   const apiUrl = import.meta.env.VITE_API_URL;
 
   // Função auxiliar para fazer requisições autenticadas
@@ -529,24 +557,6 @@ const AdminPage: React.FC = () => {
   console.log(driverOrders)
 
   const selectedDriver = drivers.find(d => d._id === selectedDriverId);
-
-  // Filtra concluídos
-  const completedOrders = useMemo(
-    () => orders.filter(o => o.status === 'concluido'),
-    [orders]
-  );
-
-  const totalCompletedPages = Math.max(1, Math.ceil(completedOrders.length / PAGE_SIZE));
-
-  // Garante página válida quando a lista muda
-  useEffect(() => {
-    if (completedPage > totalCompletedPages) setCompletedPage(totalCompletedPages);
-  }, [completedOrders.length, totalCompletedPages]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const visibleCompleted = useMemo(() => {
-    const start = (completedPage - 1) * PAGE_SIZE;
-    return completedOrders.slice(start, start + PAGE_SIZE);
-  }, [completedOrders, completedPage, PAGE_SIZE]);
 
   if (loading) return <AdminContainer>Carregando...</AdminContainer>;
   if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
