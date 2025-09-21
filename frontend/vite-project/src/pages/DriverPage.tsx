@@ -377,6 +377,58 @@ const DriverPage: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
+  // Hashes de imagens já usadas por pedido (orderId -> Set<hash>)
+  const [orderImageHashes, setOrderImageHashes] = useState<Record<string, Set<string>>>({});
+
+  // Gera SHA-256 do arquivo
+  const hashFile = async (file: File): Promise<string> => {
+    const ab = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', ab);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Retorna arquivos permitidos e mensagem de erro se houver duplicados
+  const guardDuplicateImages = async (
+    orderId: string,
+    files: File[]
+  ): Promise<{ allowed: File[]; error?: string }> => {
+    const used = orderImageHashes[orderId] ?? new Set<string>();
+    const allowed: File[] = [];
+    let blocked = 0;
+
+    for (const f of files) {
+      const h = await hashFile(f);
+      if (used.has(h)) {
+        blocked++;
+        continue;
+      }
+      allowed.push(f);
+      used.add(h);
+    }
+
+    if (!orderImageHashes[orderId] || blocked > 0 || allowed.length > 0) {
+      setOrderImageHashes(prev => ({ ...prev, [orderId]: used }));
+    }
+
+    const error = blocked > 0
+      ? `Essa imagem já foi utilizada neste pedido.${blocked > 1 ? ` (${blocked} arquivos bloqueados)` : ''}`
+      : undefined;
+
+    return { allowed, error };
+  };
+
+  // Hooks para o formulário de criar e de editar
+  const beforeUploadForCreate = async (files: File[]) => {
+    if (!selectedOrderId) return { allowed: files };
+    return guardDuplicateImages(selectedOrderId, files);
+  };
+
+  const beforeUploadForEdit = async (files: File[]) => {
+    const orderId = editingCacamba?.orderId || selectedOrderId;
+    if (!orderId) return { allowed: files };
+    return guardDuplicateImages(orderId, files);
+  };
+
   if (loading) return <DriverContainer>Carregando pedidos...</DriverContainer>;
 
   return (
@@ -463,23 +515,25 @@ const DriverPage: React.FC = () => {
           orderType={selectedOrderType}
           onCacambaAdded={handleCacambaAdded}
           onClose={handleCloseCacambaForm}
+          beforeUploadFiles={beforeUploadForCreate} // usa o guard
         />
       )}
-
-      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
 
       {isEditModalOpen && editingCacamba && (
         <EditCacambaModal
           cacamba={editingCacamba}
-          orderType={editingOrderType} // PASSA para o modal
+          orderType={editingOrderType}
           onClose={() => { setIsEditModalOpen(false); setEditingOrderType(undefined); }}
           onUpdate={(updated) => {
             if (editingCacamba._id) {
               handleUpdateCacamba(editingCacamba._id, updated);
             }
           }}
+          beforeUploadFiles={beforeUploadForEdit} // usa o guard
         />
       )}
+
+      {modalImage && <ImageModal url={modalImage} onClose={() => setModalImage(null)} />}
     </DriverContainer>
   );
 };

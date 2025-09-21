@@ -81,12 +81,6 @@ const Select = styled.select`
   }
 `;
 
-const FileInfo = styled.p`
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0.25rem 0 0 0;
-`;
-
 const ErrorMessage = styled.div`
   color: #dc2626;
   font-size: 0.875rem;
@@ -141,27 +135,51 @@ const CancelButton = styled.button`
 interface CacambaFormProps {
   orderId: string;
   orderType: 'entrega' | 'retirada' | 'troca';
-  onCacambaAdded: (cacamba: ICacamba) => void;
+  onCacambaAdded: (c: ICacamba) => void;
   onClose: () => void;
+  beforeUploadFiles?: (files: File[]) => Promise<{ allowed: File[]; error?: string }>; // alterado
 }
 
-const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacambaAdded, onClose }) => {
+const CacambaForm: React.FC<CacambaFormProps> = (props) => {
+  const { orderId, orderType, onCacambaAdded, onClose, beforeUploadFiles } = props;
   const [numero, setNumero] = useState('');
   const [tipo, setTipo] = useState<'entrega' | 'retirada'>('entrega');
-  const [local, setLocal] = useState<'via_publica' | 'canteiro_obra'>('via_publica'); // Novo estado
-  const [image, setImage] = useState<File | null>(null);
+  const [local, setLocal] = useState<'via_publica' | 'canteiro_obra'>('via_publica');
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Limpa a mensagem vermelha ao alterar a seleção
+    setError('');
+
+    const incoming = Array.from(e.target.files || []);
+    if (incoming.length === 0) {
+      setFiles([]);
+      return;
+    }
+
+    if (beforeUploadFiles) {
+      const result = await beforeUploadFiles(incoming);
+      setFiles(result.allowed);
+      // Se houve bloqueio por duplicidade, mostra no ErrorMessage
+      setError(result.error ?? '');
+    } else {
+      setFiles(incoming);
+      setError('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitAttempted(true);
 
     if (!numero.trim()) {
       setError('Número da caçamba é obrigatório');
       return;
     }
-
-    if (!image) {
+    if (files.length === 0) {
       setError('Imagem é obrigatória');
       return;
     }
@@ -173,8 +191,8 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
       const formData = new FormData();
       formData.append('numero', numero);
       formData.append('tipo', tipo);
-      formData.append('local', local); // Envia o novo campo
-      formData.append('image', image);
+      formData.append('local', local);
+      files.forEach(file => formData.append('image', file));
       const apiUrl = import.meta.env.VITE_API_URL;
 
       const token = localStorage.getItem('token');
@@ -196,8 +214,8 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
       setNumero('');
       setTipo('entrega');
       setLocal('via_publica');
-      setImage(null);
-
+      setFiles([]);
+      setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao registrar caçamba');
     } finally {
@@ -205,18 +223,11 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-    }
-  };
-
   return (
     <ModalOverlay>
       <ModalContent>
         <Title>Registrar Caçamba</Title>
-        
+
         <Form onSubmit={handleSubmit}>
           <FormGroup>
             <Label>
@@ -264,26 +275,18 @@ const CacambaForm: React.FC<CacambaFormProps> = ({ orderId, orderType, onCacamba
           </FormGroup>
 
           <FormGroup>
-            <Label>
-              Imagem
-            </Label>
+            <Label>Imagem</Label>
             <Input
               type="file"
+              multiple
               accept="image/*"
-              onChange={handleImageChange}
-              required
+              onChange={handleFileChange}
+              onClick={() => setError('')} // limpa ao abrir o seletor
             />
-            {image && (
-              <FileInfo>
-                Arquivo selecionado: {image.name}
-              </FileInfo>
-            )}
           </FormGroup>
 
           {error && (
-            <ErrorMessage>
-              {error}
-            </ErrorMessage>
+            <ErrorMessage>{error}</ErrorMessage>
           )}
 
           <ButtonGroup>

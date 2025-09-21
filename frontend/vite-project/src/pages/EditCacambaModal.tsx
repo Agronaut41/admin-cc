@@ -42,45 +42,73 @@ const SubmitButton = styled(Button)`
 const CancelButton = styled(Button)`
   background-color: #e5e7eb;
 `;
+const ErrorText = styled.p`
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0;
+`;
 
 interface EditCacambaModalProps {
   cacamba: ICacamba;
-  onClose: () => void;
-  onUpdate: (updatedData: Partial<ICacamba> & { image?: File | null }) => void;
   orderType?: 'entrega' | 'retirada' | 'troca';
+  onClose: () => void;
+  onUpdate: (updated: Partial<ICacamba> & { image?: File | null }) => void;
+  beforeUploadFiles?: (files: File[]) => Promise<{ allowed: File[]; error?: string }>; // alterado
 }
 
-const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, onUpdate, orderType }) => {
+const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ beforeUploadFiles, ...props }) => {
   // força o tipo inicial conforme o tipo do pedido (mesma regra do adicionar)
   const forcedTipo: 'entrega' | 'retirada' =
-    orderType === 'retirada'
+    props.orderType === 'retirada'
       ? 'retirada'
-      : orderType === 'entrega'
+      : props.orderType === 'entrega'
         ? 'entrega'
-        : (cacamba.tipo === 'retirada' ? 'retirada' : 'entrega');
+        : (props.cacamba.tipo === 'retirada' ? 'retirada' : 'entrega');
 
-  const [numero, setNumero] = useState(cacamba.numero);
+  const [numero, setNumero] = useState(props.cacamba.numero);
   const [tipo, setTipo] = useState<'entrega' | 'retirada'>(forcedTipo);
-  const [formData, setFormData] = useState({ local: cacamba.local });
-  const [image, setImage] = useState<File | null>(null);
+  const [formData, setFormData] = useState({ local: props.cacamba.local });
+  const [file, setFile] = useState<File | null>(null);
+  const [imgError, setImgError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false); // <-- ADICIONADO
 
   const apiUrl = import.meta.env.VITE_API_URL; // <-- ADICIONADO
 
   // quais opções mostrar (idêntico ao formulário de adicionar)
-  const showEntrega = !orderType || orderType === 'entrega' || orderType === 'troca';
-  const showRetirada = !orderType || orderType === 'retirada' || orderType === 'troca';
+  const showEntrega = !props.orderType || props.orderType === 'entrega' || props.orderType === 'troca';
+  const showRetirada = !props.orderType || props.orderType === 'retirada' || props.orderType === 'troca';
 
   // se o pedido não permite trocar o tipo, bloqueia o select
-  const lockSelect = orderType === 'entrega' || orderType === 'retirada';
+  const lockSelect = props.orderType === 'entrega' || props.orderType === 'retirada';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) setImage(e.target.files[0]);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // limpa erros assim que o usuário seleciona/alterar o arquivo
+    setImgError(null);
+
+    const incoming = Array.from(e.target.files || []);
+    if (incoming.length === 0) {
+      setFile(null);
+      return;
+    }
+
+    if (beforeUploadFiles) {
+      const result = await beforeUploadFiles(incoming);
+      if (result.allowed.length > 0) {
+        setFile(result.allowed[0]);
+        setImgError(null);
+      } else {
+        setFile(null);
+        setImgError(result.error ?? null);
+      }
+    } else {
+      setFile(incoming[0] || null);
+      setImgError(null);
+    }
   };
 
   // SUBSTITUÍDO: agora faz a requisição PATCH diretamente
@@ -94,10 +122,10 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
       fd.append('numero', numero);
       fd.append('tipo', tipo);
       fd.append('local', formData.local);
-      if (image) fd.append('image', image);
+      if (file) fd.append('image', file);
 
       const token = localStorage.getItem('token') || '';
-      const resp = await fetch(`${apiUrl}/cacambas/${cacamba._id}`, {
+      const resp = await fetch(`${apiUrl}/cacambas/${props.cacamba._id}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` },
         body: fd
@@ -108,8 +136,8 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
       } else {
         const data = await resp.json();
         // mantém compatibilidade: envia objeto retornado (possui os campos esperados)
-        onUpdate(data.cacamba || { numero, tipo, local: formData.local, imageUrl: cacamba.imageUrl });
-        onClose();
+        props.onUpdate(data.cacamba || { numero, tipo, local: formData.local, imageUrl: props.cacamba.imageUrl });
+        props.onClose();
       }
     } catch (err) {
       console.error('Erro na atualização da caçamba', err);
@@ -121,7 +149,7 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
   return (
     <ModalOverlay>
       <ModalContent>
-        <Title>Editar Caçamba #{cacamba.numero}</Title>
+        <Title>Editar Caçamba #{props.cacamba.numero}</Title>
         <Form onSubmit={handleSubmit}>
           <FormGroup>
             <Label>Número da Caçamba</Label>
@@ -157,12 +185,18 @@ const EditCacambaModal: React.FC<EditCacambaModalProps> = ({ cacamba, onClose, o
 
           <FormGroup>
             <Label>Trocar Imagem (Opcional)</Label>
-            <Input type="file" accept="image/*" onChange={handleImageChange} />
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              onClick={() => setImgError(null)} // limpa ao abrir o seletor
+            />
+            {imgError && <ErrorText>{imgError}</ErrorText>}
           </FormGroup>
 
           <ButtonGroup>
             <SubmitButton type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar Alterações'}</SubmitButton>
-            <CancelButton type="button" onClick={onClose} disabled={saving}>Cancelar</CancelButton>
+            <CancelButton type="button" onClick={props.onClose} disabled={saving}>Cancelar</CancelButton>
           </ButtonGroup>
         </Form>
       </ModalContent>
