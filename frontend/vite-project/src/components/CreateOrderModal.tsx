@@ -1,6 +1,7 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent, useMemo } from 'react';
 import styled from 'styled-components';
 import type { IDriver, IClient } from '../interfaces';
+import ReactSelect, { type SingleValue } from 'react-select';
 
 // Overlay ocupa a tela inteira com padding e safe areas
 const ModalOverlay = styled.div`
@@ -99,6 +100,8 @@ interface CreateOrderModalProps {
   drivers: IDriver[];
 }
 
+type ClientOption = { value: string; label: string; clientName: string };
+
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCreated, drivers }) => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -133,9 +136,23 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     fetchClients();
   }, []);
 
+  const clientOptions = useMemo<ClientOption[]>(
+    () =>
+      clients.map(c => ({
+        value: c._id,
+        clientName: c.clientName, // usado no filtro
+        label: [
+          c.clientName
+        ]
+          .filter(Boolean)
+          .join(' • ')
+      })),
+    [clients]
+  );
+
   // ao selecionar cliente, preencher CEP também
-  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clientId = e.target.value;
+  const handleClientChangeRs = (opt: SingleValue<ClientOption>) => {
+    const clientId = opt?.value || '';
     setSelectedClientId(clientId);
 
     if (clientId) {
@@ -151,7 +168,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
           address: selectedClient.address || '',
           addressNumber: selectedClient.addressNumber || '',
           city: selectedClient.city ?? '',
-          cep: selectedClient.cep ?? '' // ADICIONADO
+          cep: selectedClient.cep ?? ''
         }));
       }
     } else {
@@ -164,7 +181,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
         address: '',
         addressNumber: '',
         city: '',
-        cep: '', // ADICIONADO
+        cep: '',
         type: 'entrega',
         motorista: '',
         priority: 0
@@ -226,12 +243,20 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
           <Form onSubmit={handleSubmit}>
             <FormGroup>
               <Label>Selecione o Cliente</Label>
-              <Select value={selectedClientId} onChange={handleClientChange} required>
-                <option value="">-- Escolha um cliente --</option>
-                {clients.map(client => (
-                  <option key={client._id} value={client._id}>{client.clientName}</option>
-                ))}
-              </Select>
+              <ReactSelect
+                options={clientOptions}
+                value={clientOptions.find(o => o.value === selectedClientId) || null}
+                onChange={handleClientChangeRs}
+                placeholder="Selecione ou pesquise o cliente..."
+                isSearchable
+                isClearable
+                // Filtra APENAS pelo nome do cliente
+                filterOption={(opt, raw) =>
+                  (opt.data as ClientOption).clientName.toLowerCase().includes((raw || '').toLowerCase())
+                }
+                menuPortalTarget={document.body}
+                styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+              />
             </FormGroup>
 
             {selectedClientId && (
@@ -339,7 +364,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                 </div>
               </>
             )}
-
             {error && <ErrorMessage>{error}</ErrorMessage>}
 
             <ButtonGroup>
