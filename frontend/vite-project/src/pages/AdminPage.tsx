@@ -120,6 +120,7 @@ const OrderCard = styled.div<{ status: IOrder['status'] }>`
   border-radius: 8px;
   padding: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
 
   h3 {
     margin-top: 0;
@@ -284,6 +285,75 @@ const DriverTabButton = styled.button<{active:boolean}>`
   }
 `;
 
+const PaginationBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem 0;
+  flex-wrap: wrap;
+
+  > span {
+    flex: 1 1 auto;
+    min-width: 220px;
+  }
+
+  .controls {
+    flex: 0 1 auto;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 640px) {
+    justify-content: center;
+    text-align: center;
+
+    > span {
+      order: 2;
+      width: 100%;
+      font-size: .9rem;
+      color: #6b7280;
+    }
+
+    .controls {
+      order: 1;
+      width: 100%;
+      justify-content: center;
+    }
+  }
+`;
+const PageButton = styled.button`
+  padding: .5rem .7rem;
+  min-width: 44px; /* alvo de toque acessível */
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.2;
+  font-size: .95rem;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+
+  &:hover { background: #f9fafb; border-color: #d1d5db; }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+`;
+
+const Section = styled.section`
+  margin-top: 1.5rem;
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin: .75rem 0 1rem;
+
+  h3 { margin: 0; }
+  span { color: #6b7280; font-size: .9rem; }
+`;
+
 // Remover margem padrão do body
 const GlobalStyle = createGlobalStyle`
   body { margin: 0; }
@@ -305,6 +375,8 @@ const AdminPage: React.FC = () => {
   const [editingDriver, setEditingDriver] = useState<IDriver | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string>(''); // NOVO
+  const [completedPage, setCompletedPage] = useState(1);
+  const PAGE_SIZE = 5;
   const apiUrl = import.meta.env.VITE_API_URL;
 
   // Função auxiliar para fazer requisições autenticadas
@@ -458,6 +530,24 @@ const AdminPage: React.FC = () => {
 
   const selectedDriver = drivers.find(d => d._id === selectedDriverId);
 
+  // Filtra concluídos
+  const completedOrders = useMemo(
+    () => orders.filter(o => o.status === 'concluido'),
+    [orders]
+  );
+
+  const totalCompletedPages = Math.max(1, Math.ceil(completedOrders.length / PAGE_SIZE));
+
+  // Garante página válida quando a lista muda
+  useEffect(() => {
+    if (completedPage > totalCompletedPages) setCompletedPage(totalCompletedPages);
+  }, [completedOrders.length, totalCompletedPages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleCompleted = useMemo(() => {
+    const start = (completedPage - 1) * PAGE_SIZE;
+    return completedOrders.slice(start, start + PAGE_SIZE);
+  }, [completedOrders, completedPage, PAGE_SIZE]);
+
   if (loading) return <AdminContainer>Carregando...</AdminContainer>;
   if (error) return <AdminContainer>Erro: {error}</AdminContainer>;
 
@@ -578,63 +668,99 @@ const AdminPage: React.FC = () => {
                     <p>Nenhum pedido pendente.</p>
                   )}
 
-                  {/* Concluídos */}
-                  <h3 style={{ marginTop:'1.5rem' }}>Pedidos Concluídos</h3>
-                  {driverOrders.filter(o => o.status === 'concluido').length ? (
-                    <OrdersGrid>
-                      {driverOrders
-                        .filter(o => o.status === 'concluido')
-                        .sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                        .map(order => (
-                          <OrderCard key={order._id} status={order.status}>
-                            <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city} - CEP {order.cep}</p>
-                            <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                  {/* Seção Concluídos */}
+                  <Section>
+                    <SectionHeader>
+                      <h3>Concluídos</h3>
+                      <span>Total: {completedOrders.length}</span>
+                    </SectionHeader>
 
-                            {((order.cacambas?.length ?? 0) > 0) && (
-                              <CacambaSection>
-                                <h4>Caçambas Registradas:</h4>
-                                <CacambaList
-                                  cacambas={order.cacambas || []}
-                                  onImageClick={setModalImage}
+                    {/* Renderiza somente a página visível */}
+                    {visibleCompleted.map(order => (
+                      <OrderCard key={order._id} status={order.status}>
+                        <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
+                        <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city} - CEP {order.cep}</p>
+                        <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+
+                        {((order.cacambas?.length ?? 0) > 0) && (
+                          <CacambaSection>
+                            <h4>Caçambas Registradas:</h4>
+                            <CacambaList
+                              cacambas={order.cacambas || []}
+                              onImageClick={setModalImage}
+                            />
+                          </CacambaSection>
+                        )}
+
+                        {((order.imageUrls?.length ?? 0) > 0) && (
+                          <div>
+                            <h4>Imagens Anexadas:</h4>
+                            <ImageContainer>
+                              {(order.imageUrls ?? []).map((url, i) => (
+                                <OrderImage
+                                  key={i}
+                                  src={`${apiUrl}${url}`}
+                                  alt={`Imagem ${i + 1}`}
+                                  onClick={() => setModalImage(`${apiUrl}${url}`)}
                                 />
-                              </CacambaSection>
-                            )}
+                              ))}
+                            </ImageContainer>
+                          </div>
+                        )}
 
-                            {((order.imageUrls?.length ?? 0) > 0) && (
-                              <div>
-                                <h4>Imagens Anexadas:</h4>
-                                <ImageContainer>
-                                  {(order.imageUrls ?? []).map((url, i) => (
-                                    <OrderImage
-                                      key={i}
-                                      src={`${apiUrl}${url}`}
-                                      alt={`Imagem ${i + 1}`}
-                                      onClick={() => setModalImage(`${apiUrl}${url}`)}
-                                    />
-                                  ))}
-                                </ImageContainer>
-                              </div>
-                            )}
+                        <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
+                          <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
+                          {order.status === 'concluido' && (
+                            <ActionButton
+                              type="button"
+                              onClick={() => downloadOrderPdf(order)}
+                              style={{ background:'#2563eb' }}
+                            >
+                              Baixar Pedido
+                            </ActionButton>
+                          )}
+                        </div>
+                      </OrderCard>
+                    ))}
 
-                            <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginTop:'.5rem' }}>
-                              <DeleteOrderButton onClick={() => handleDeleteOrder(order._id)}>Excluir</DeleteOrderButton>
-                              {order.status === 'concluido' && (
-                                <ActionButton
-                                  type="button"
-                                  onClick={() => downloadOrderPdf(order)}
-                                  style={{ background:'#2563eb' }}
-                                >
-                                  Baixar Pedido
-                                </ActionButton>
-                              )}
-                            </div>
-                          </OrderCard>
-                        ))}
-                    </OrdersGrid>
-                  ) : (
-                    <p>Nenhum pedido concluído.</p>
-                  )}
+                    {/* Paginação */}
+                    {completedOrders.length > PAGE_SIZE && (
+                      <PaginationBar>
+                        <span>
+                          Mostrando {visibleCompleted.length} de {completedOrders.length} pedidos concluídos
+                        </span>
+                        <div className="controls">
+                          <PageButton
+                            onClick={() => setCompletedPage(1)}
+                            disabled={completedPage === 1}
+                            aria-label="Primeira página"
+                          >
+                            «
+                          </PageButton>
+                          <PageButton
+                            onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                            disabled={completedPage === 1}
+                          >
+                            Anterior
+                          </PageButton>
+                          <span>Página {completedPage} de {totalCompletedPages}</span>
+                          <PageButton
+                            onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                            disabled={completedPage === totalCompletedPages}
+                          >
+                            Próxima
+                          </PageButton>
+                          <PageButton
+                            onClick={() => setCompletedPage(totalCompletedPages)}
+                            disabled={completedPage === totalCompletedPages}
+                            aria-label="Última página"
+                          >
+                            »
+                          </PageButton>
+                        </div>
+                      </PaginationBar>
+                    )}
+                  </Section>
                 </SectionContainer>
               )}
             </div>
