@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import ClientList from '../components/ClientList';
 import ClientForm from '../components/ClientForm';
@@ -39,6 +39,22 @@ const AddButton = styled.button`
   }
 `;
 
+// Barra de filtro
+const FilterBar = styled.div`
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+const SearchInput = styled.input`
+  flex: 1 1 260px;
+  padding: .6rem .8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: .95rem;
+`;
+
 const ClientPage: React.FC = () => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -48,6 +64,7 @@ const ClientPage: React.FC = () => {
   // Novos estados para o modal de pedidos
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
+  const [search, setSearch] = useState('');
   const apiUrl = import.meta.env.VITE_API_URL;
 
   const fetchClients = async () => {
@@ -151,6 +168,33 @@ const ClientPage: React.FC = () => {
     setIsOrdersModalOpen(true);
   };
 
+  // normaliza texto para busca (sem acentos)
+  const norm = (s: any) =>
+    String(s ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+  // clients: mantenha sua origem atual (estado já existente no componente)
+  const filteredClients = useMemo(() => {
+    if (!search.trim()) return clients; // clients já existente na página
+    const q = norm(search);
+    return clients.filter(c => {
+      const fields = [
+        c.clientName,
+        c.cnpjCpf,
+        c.address,
+        c.addressNumber,
+        c.neighborhood,
+        c.city,
+        c.cep,
+        c.contactName,
+        c.contactNumber
+      ];
+      return fields.some(f => norm(f).includes(q));
+    });
+  }, [clients, search]);
+
   if (loading) {
     return <div>Carregando...</div>;
   }
@@ -182,12 +226,27 @@ const ClientPage: React.FC = () => {
           initialData={editingClient || undefined}
         />
       ) : (
-        <ClientList
-          clients={clients}
-          onEdit={handleEditButtonClick}
-          onDelete={handleDeleteClient}
-          onViewOrders={handleViewOrdersClick} // Passe a nova função
-        />
+        <>
+          {/* Filtro de clientes */}
+          <FilterBar>
+            <SearchInput
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar cliente por nome, CNPJ/CPF, endereço, bairro, cidade, CEP..."
+            />
+            <span style={{ color:'#6b7280', fontSize:'.9rem' }}>
+              {filteredClients.length} de {clients.length} clientes
+            </span>
+          </FilterBar>
+
+          <ClientList
+            clients={filteredClients}
+            onEdit={handleEditButtonClick}
+            onDelete={handleDeleteClient}
+            onViewOrders={handleViewOrdersClick} // Passe a nova função
+          />
+        </>
       )}
 
       {/* Renderize o novo modal */}
