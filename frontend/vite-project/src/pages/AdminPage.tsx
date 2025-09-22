@@ -378,24 +378,29 @@ const AdminPage: React.FC = () => {
   const [completedPage, setCompletedPage] = useState(1);
   const PAGE_SIZE = 5;
 
-  // Ordena concluídos do mais recente para o mais antigo
+  // Pedidos do motorista selecionado (aceita motorista como id ou objeto populado)
+  const driverOrders = useMemo(
+    () => orders.filter(o => (o.motorista?._id ?? (o as any).motorista) === selectedDriverId),
+    [orders, selectedDriverId]
+  );
+
+  // Ordena concluídos do motorista selecionado (mais recente -> mais antigo)
   const completedOrders = useMemo(() => {
-    const completed = orders.filter(o => o.status === 'concluido');
+    const completed = (driverOrders ?? []).filter(o => o.status === 'concluido');
     return [...completed].sort((a, b) => {
       const aTime = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
       const bTime = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
-
       if (aTime !== bTime) return bTime - aTime;
 
-      // fallback pelo orderNumber (maior primeiro)
       const an = typeof a.orderNumber === 'number' ? a.orderNumber : -Infinity;
       const bn = typeof b.orderNumber === 'number' ? b.orderNumber : -Infinity;
       return bn - an;
     });
-  }, [orders]);
+  }, [driverOrders]);
 
   const totalCompletedPages = Math.max(1, Math.ceil(completedOrders.length / PAGE_SIZE));
 
+  // Garante página válida quando o conjunto filtrado muda
   useEffect(() => {
     if (completedPage > totalCompletedPages) setCompletedPage(totalCompletedPages);
   }, [completedOrders.length, totalCompletedPages]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -547,14 +552,6 @@ const AdminPage: React.FC = () => {
       setSelectedDriverId(drivers[0]._id);
     }
   }, [drivers, selectedDriverId]);
-
-  // Pedidos do motorista selecionado
-  const driverOrders = useMemo(
-    () => orders.filter(o => o.motorista?._id === selectedDriverId),
-    [orders, selectedDriverId]
-  );
-
-  console.log(driverOrders)
 
   const selectedDriver = drivers.find(d => d._id === selectedDriverId);
 
