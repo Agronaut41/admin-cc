@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type FormEvent, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styled from 'styled-components';
 import type { IDriver, IClient } from '../interfaces';
 import ReactSelect, { type SingleValue } from 'react-select';
@@ -120,6 +120,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     priority: 0
   });
   const [error, setError] = useState('');
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const lastCepRef = useRef<string>('');
   const apiUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -189,7 +191,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -231,6 +233,49 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
       setError(errorData.message || 'Erro ao criar pedido.');
     }
   };
+
+  // CEP -> auto-completar
+  const onlyDigits = (s: string) => s.replace(/\D/g, '');
+  const maskCep = (digits: string) => (digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits);
+
+  const fetchCep = async (cepDigits: string) => {
+    if (!cepDigits || cepDigits.length !== 8) return;
+    if (lastCepRef.current === cepDigits) return; // evita requisições repetidas
+    lastCepRef.current = cepDigits;
+
+    try {
+      setIsFetchingCep(true);
+      const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+      const data = await res.json();
+      if (data && !data.erro) {
+        setForm(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address,
+          neighborhood: data.bairro || prev.neighborhood,
+          city: data.localidade || prev.city,
+        }));
+      }
+    } catch {
+      // silencioso: se falhar, não quebra o fluxo
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
+
+  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const digits = onlyDigits(raw).slice(0, 8);
+    const masked = maskCep(digits);
+    setForm(prev => ({ ...prev, cep: masked }));
+    if (digits.length === 8) fetchCep(digits);
+  };
+
+  // opcional: ao selecionar cliente com CEP já preenchido, buscar auto-complete
+  useEffect(() => {
+    const digits = onlyDigits(form.cep || '');
+    if (digits.length === 8) fetchCep(digits);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [/* dispara quando trocar de cliente e atualizar form.cep */ form.cep]);
 
   return (
     <ModalOverlay onClick={onClose}>
@@ -290,20 +335,48 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                   <Label>Número do Contato</Label>
                   <Input type="text" value={form.contactNumber} onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))} />
                 </FormGroup>
-                <FormGroup>
-                  <Label>Bairro</Label>
-                  <Input type="text" value={form.neighborhood} onChange={e => setForm(f => ({ ...f, neighborhood: e.target.value }))} />
-                </FormGroup>
 
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 180px' }}>
+                    <Label>CEP</Label>
+                    <Input
+                      type="text"
+                      value={form.cep}
+                      onChange={handleCepChange}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      inputMode="numeric"
+                    />
+                    {/* opcional: indicador simples */}
+                    {isFetchingCep && <small style={{ color: '#6b7280' }}>Buscando endereço…</small>}
+                  </div>
+
                   <div style={{ flex: '1 1 260px' }}>
                     <Label>Endereço</Label>
-                    <Input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+                    <Input
+                      type="text"
+                      value={form.address}
+                      onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                    />
                   </div>
                   <div style={{ flex: '1 1 150px' }}>
                     <Label>Número</Label>
-                    <Input type="text" value={form.addressNumber} onChange={e => setForm(f => ({ ...f, addressNumber: e.target.value }))} />
+                    <Input
+                      type="text"
+                      value={form.addressNumber}
+                      onChange={e => setForm(f => ({ ...f, addressNumber: e.target.value }))}
+                    />
                   </div>
+
+                  <div style={{ flex: '1 1 220px' }}>
+                    <Label>Bairro</Label>
+                    <Input
+                      type="text"
+                      value={form.neighborhood}
+                      onChange={e => setForm(f => ({ ...f, neighborhood: e.target.value }))}
+                    />
+                  </div>
+
                   <div style={{ flex: '1 1 220px' }}>
                     <Label>Cidade</Label>
                     <Select
@@ -316,10 +389,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                       <option value="Jacareí">Jacareí</option>
                       <option value="Caçapava">Caçapava</option>
                     </Select>
-                  </div>
-                  <div style={{ flex: '1 1 180px' }}>
-                    <Label>CEP</Label>
-                    <Input type="text" value={form.cep} onChange={e => setForm(f => ({ ...f, cep: e.target.value }))} placeholder="00000-000" />
                   </div>
                 </div>
 

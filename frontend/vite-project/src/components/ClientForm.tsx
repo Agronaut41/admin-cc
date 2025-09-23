@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 
 const FormContainer = styled.div`
@@ -101,13 +101,53 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
     clientName: '',
     cnpjCpf: '',
     city: '',
-    cep: '', // ADICIONADO
+    cep: '',
     contactName: '',
     contactNumber: '',
     neighborhood: '',
     address: '',
     addressNumber: '',
   });
+
+  // Auto-preenchimento por CEP
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const lastCepRef = useRef<string>('');
+
+  const onlyDigits = (s: string) => s.replace(/\D/g, '');
+  const maskCep = (digits: string) =>
+    digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits;
+
+  const fetchCep = async (cepDigits: string) => {
+    if (!cepDigits || cepDigits.length !== 8) return;
+    if (lastCepRef.current === cepDigits) return;
+    lastCepRef.current = cepDigits;
+
+    try {
+      setIsFetchingCep(true);
+      const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+      const data = await res.json();
+      if (data && !data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address,
+          neighborhood: data.bairro || prev.neighborhood,
+          city: data.localidade || prev.city,
+        }));
+      }
+    } catch {
+      // silencioso
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
+
+  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const digits = onlyDigits(raw).slice(0, 8);
+    const masked = maskCep(digits);
+    setFormData(prev => ({ ...prev, cep: masked }));
+    if (digits.length === 8) fetchCep(digits);
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -116,13 +156,15 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
         clientName: initialData.clientName || '',
         cnpjCpf: initialData.cnpjCpf || '',
         city: initialData.city || '',
-        cep: initialData.cep || '', // ADICIONADO
+        cep: initialData.cep || '',
         contactName: initialData.contactName || '',
         contactNumber: initialData.contactNumber || '',
         neighborhood: initialData.neighborhood || '',
         address: initialData.address || '',
         addressNumber: initialData.addressNumber || '',
       }));
+      const digits = onlyDigits(initialData.cep || '');
+      if (digits.length === 8) fetchCep(digits);
     }
   }, [initialData]);
 
@@ -167,6 +209,60 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
 
         <FormRow>
           <FormGroup>
+            <Label htmlFor="cep">CEP</Label>
+            <Input
+              id="cep"
+              name="cep"
+              type="text"
+              value={formData.cep}
+              onChange={handleCepChange}
+              placeholder="00000-000"
+              maxLength={9}
+              inputMode="numeric"
+            />
+            {isFetchingCep && (
+              <small style={{ color: '#6b7280' }}>Buscando endereço…</small>
+            )}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="address">Logradouro</Label>
+            <Input
+              id="address"
+              name="address"
+              type="text"
+              value={formData.address}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="addressNumber">Número</Label>
+            <Input
+              id="addressNumber"
+              name="addressNumber"
+              type="text"
+              value={formData.addressNumber}
+              onChange={handleChange}
+            />
+          </FormGroup>
+        </FormRow>
+
+        <FormRow>
+          <FormGroup>
+            <Label htmlFor="neighborhood">Bairro</Label>
+            <Input
+              id="neighborhood"
+              name="neighborhood"
+              type="text"
+              value={formData.neighborhood}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
             <Label htmlFor="city">Cidade</Label>
             <Select
               id="city"
@@ -180,18 +276,6 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
               <option value="Jacareí">Jacareí</option>
               <option value="Caçapava">Caçapava</option>
             </Select>
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="cep">CEP</Label>
-            <Input
-              id="cep"
-              name="cep"
-              type="text"
-              value={formData.cep}
-              onChange={handleChange}
-              placeholder="00000-000"
-            />
           </FormGroup>
         </FormRow>
 
@@ -215,44 +299,6 @@ const ClientForm: React.FC<Props> = ({ onSubmit, onCancel, initialData }) => {
               name="contactNumber"
               type="text"
               value={formData.contactNumber}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
-        </FormRow>
-
-        <FormRow>
-          <FormGroup>
-            <Label htmlFor="neighborhood">Bairro</Label>
-            <Input
-              id="neighborhood"
-              name="neighborhood"
-              type="text"
-              value={formData.neighborhood}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="address">Endereço</Label>
-            <Input
-              id="address"
-              name="address"
-              type="text"
-              value={formData.address}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="addressNumber">Número</Label>
-            <Input
-              id="addressNumber"
-              name="addressNumber"
-              type="text"
-              value={formData.addressNumber}
               onChange={handleChange}
               required
             />
