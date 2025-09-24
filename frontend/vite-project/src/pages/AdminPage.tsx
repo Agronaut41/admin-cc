@@ -622,8 +622,9 @@ const AdminPage: React.FC = () => {
                         .map(order => (
                           <OrderCard key={order._id} status={order.status}>
                             <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city} - CEP {order.cep}</p>
+                            <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}{order.cep ? ` - CEP ${order.cep}` : ''}</p>
                             <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                            <p><strong>CNPJ/CPF:</strong> {order.cnpjCpf || '-'}</p>
                             <p><strong>Prioridade:</strong> {order.priority}</p>
 
                             {((order.cacambas?.length ?? 0) > 0) && (
@@ -686,8 +687,9 @@ const AdminPage: React.FC = () => {
                     {visibleCompleted.map(order => (
                       <OrderCard key={order._id} status={order.status}>
                         <h3>Pedido #{order.orderNumber} - {order.clientName}</h3>
-                        <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city} - CEP {order.cep}</p>
+                        <p><strong>Endereço:</strong> {order.address}, {order.addressNumber} - {order.neighborhood} - {order.city}{order.cep ? ` - CEP ${order.cep}` : ''}</p>
                         <p><strong>Contato:</strong> {order.contactName} ({order.contactNumber})</p>
+                        <p><strong>CNPJ/CPF:</strong> {order.cnpjCpf || '-'}</p>
 
                         {((order.cacambas?.length ?? 0) > 0) && (
                           <CacambaSection>
