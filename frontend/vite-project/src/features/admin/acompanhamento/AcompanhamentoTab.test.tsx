@@ -64,6 +64,7 @@ const item: AcompanhamentoItem = {
     tipo: 'entrega',
     orderId: 'ord-1',
     local: 'via_publica',
+    price: 210,
     createdAt: '2026-05-01T10:00:00.000Z',
     horaServicoDigitos: '001',
   },
@@ -266,6 +267,15 @@ const createAuthenticatedFetch = (
   });
 
 describe('AcompanhamentoTab track', () => {
+  it('exibe o valor da caçamba no card de acompanhamento', async () => {
+    renderTab(createAuthenticatedFetch());
+
+    await screen.findByRole('option', { name: 'Caçamba #123' });
+    const card = screen.getByTestId('acompanhamento-card-cac-1');
+    expect(within(card).getByText('Valor')).toBeInTheDocument();
+    expect(within(card).getByText('R$ 210,00')).toBeInTheDocument();
+  });
+
   it('carrega opções, busca a caçamba selecionada e mostra loading seguido da timeline', async () => {
     let resolveFetch: (response: Response) => void = () => {};
     const authenticatedFetch = createAuthenticatedFetch(async () =>
@@ -291,7 +301,7 @@ describe('AcompanhamentoTab track', () => {
     expect(screen.getByText(/Primeira locação:/)).toBeInTheDocument();
     expect(screen.getByText(/Última locação:/)).toBeInTheDocument();
     expect(screen.getByText('Retirada')).toBeInTheDocument();
-    expect(screen.getByText('R$ 210,00')).toBeInTheDocument();
+    expect(within(trackDialog).getByText('R$ 210,00')).toBeInTheDocument();
     expect(within(screen.getAllByTestId(/cacamba-track-event-/)[0]).getByText('Retirada')).toBeInTheDocument();
     expect(within(trackDialog).getAllByRole('button', { name: 'Editar número da caçamba' })).toHaveLength(2);
     expect(within(trackDialog).getAllByRole('button', { name: 'Excluir caçamba' })).toHaveLength(2);

@@ -118,6 +118,11 @@ const historySelectStyles: StylesConfig<HistoryOption, false> = {
   menuPortal: (base) => ({ ...base, zIndex: 1400 }),
 };
 
+const formatCurrency = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : '-';
+
 export const AcompanhamentoTab = ({
   items,
   filters,
@@ -536,6 +541,10 @@ export const AcompanhamentoTab = ({
                       <InfoTile>
                         <InfoLabel>Local</InfoLabel>
                         <InfoValue>{localLabel}</InfoValue>
+                      </InfoTile>
+                      <InfoTile>
+                        <InfoLabel>Valor</InfoLabel>
+                        <InfoValue>{formatCurrency(cacamba.price)}</InfoValue>
                       </InfoTile>
                       <InfoTile>
                         <InfoLabel>Qtd. no endereço</InfoLabel>
