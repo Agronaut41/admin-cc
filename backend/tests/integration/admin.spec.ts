@@ -45,16 +45,43 @@ describe('Admin APIs', () => {
       .set('Authorization', `Bearer ${adminToken}`);
     expect(searched.body.totalItems).toBe(1);
 
+    const targetClient = first.body.items[0];
+    const orderWithClientSnapshot = await OrderModel.create({
+      orderNumber: nextOrderNumber++,
+      clientId: targetClient._id,
+      clientName: targetClient.clientName,
+      cnpjCpf: '111.111.111-11',
+      contactName: targetClient.contactName,
+      contactNumber: targetClient.contactNumber,
+      neighborhood: targetClient.neighborhood,
+      address: targetClient.address,
+      addressNumber: targetClient.addressNumber,
+      city: targetClient.city || '',
+      type: 'retirada',
+    });
+
     const updated = await request(app)
-      .patch(`/clients/${first.body.items[0]._id}`)
+      .patch(`/clients/${targetClient._id}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ clientName: 'Cliente Alterado' });
+      .send({ clientName: 'Cliente Alterado', cnpjCpf: '222.222.222-22' });
     expect(updated.status).toBe(200);
 
     const afterMutation = await request(app)
       .get('/clients?paginated=true&page=1&pageSize=99')
       .set('Authorization', `Bearer ${adminToken}`);
     expect(afterMutation.headers['x-cache']).toBe('MISS');
+
+    const ordersAfterClientUpdate = await request(app)
+      .get('/orders')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(ordersAfterClientUpdate.status).toBe(200);
+    const syncedOrder = ordersAfterClientUpdate.body.find(
+      (order: any) => String(order._id) === String(orderWithClientSnapshot._id),
+    );
+    expect(syncedOrder).toMatchObject({
+      clientName: 'Cliente Alterado',
+      cnpjCpf: '222.222.222-22',
+    });
   });
 
   it('CRUD de pedidos com validações principais', async () => {

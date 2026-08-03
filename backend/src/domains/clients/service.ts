@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { ClientModel } from '../../models/Client';
 import { ClosureGroupModel } from '../../models/ClosureGroup';
 import { OrderModel } from '../../models/Order';
+import { emitOrdersUpdated } from '../../shared/realtime';
 import { buildLocalDateRange } from '../../utils/order';
 import { enrichWithdrawalCacambasWithDeliveryMetadata } from '../cacambas/enrichment';
 import {
@@ -19,6 +20,7 @@ import {
   type ClosureDateRange,
   parseClosurePaymentFilter,
 } from '../closures/helpers';
+import { buildOrderClientSnapshot } from '../orders/helpers';
 
 const CLIENT_SELECT = 'clientName contactName contactNumber neighborhood address addressNumber cnpjCpf email rgInscricaoEstadual city cep createdAt updatedAt';
 const ORDER_SELECT = '_id orderNumber clientId clientName contactName contactNumber neighborhood address addressNumber type priority status motorista cacambas createdAt updatedAt cnpjCpf city cep placa';
@@ -315,7 +317,16 @@ export const updateClient = async (id: string, payload: Record<string, unknown>)
     if (payload[field] !== undefined) updates[field] = payload[field];
   }
 
-  return ClientModel.findByIdAndUpdate(id, updates, { new: true });
+  const updated = await ClientModel.findByIdAndUpdate(id, updates, { new: true });
+  if (!updated) return null;
+
+  await OrderModel.updateMany(
+    { clientId: updated._id },
+    { $set: buildOrderClientSnapshot(updated) },
+  );
+  emitOrdersUpdated();
+
+  return updated;
 };
 
 export const deleteClient = async (id: string) => {
