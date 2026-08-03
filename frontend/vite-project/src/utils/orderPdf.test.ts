@@ -124,9 +124,9 @@ describe('downloadOrderPdf', () => {
     const table = firstTable();
     expect(table?.head).toBeUndefined();
     expect(table?.body).toEqual([
+      ['Cliente', 'Cliente Teste'],
       ['Número do Pedido', '101'],
       ['Tipo', 'Entrega'],
-      ['Cliente', 'Cliente Teste'],
       ['Endereço', 'Rua A, 10 - Centro'],
       ['Motorista', 'Motorista Teste'],
       ['Finalizado em', expect.any(String)],
@@ -221,8 +221,10 @@ describe('downloadOrderPdf', () => {
     const tables = autoTableMock.mock.calls.map((call) => call[1] as AutoTableOptions);
     expect(tables[1]?.head).toEqual([['Detalhes Individuais', '']]);
     expect(tables[1]?.body).toEqual(expect.arrayContaining([
+      ['Número', '101 - Colocação'],
       ['Local', 'Via Publica'],
       ['Conteúdo', 'Entulho Limpo'],
+      ['Número', '102 - Retirada'],
       ['Local', 'Canteiro De Obra'],
       ['Conteúdo', 'Terra'],
     ]));
@@ -273,7 +275,7 @@ describe('downloadOrderPdf', () => {
     const detailsText = JSON.stringify(detailsTable?.body);
 
     expect(detailsTable?.body).toEqual(expect.arrayContaining([
-      ['Número', '102'],
+      ['Número', '102 - Colocação'],
       ['Local', 'Canteiro De Obra'],
       ['Conteúdo', 'Terra'],
     ]));

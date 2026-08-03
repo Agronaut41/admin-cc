@@ -154,9 +154,9 @@ export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfO
   // Tabela principal (dados do pedido)
   autoTable(doc, {
     body: [
+      ['Cliente', legacyOrder.client?.clientName || order.clientName || '-'],
       ['Número do Pedido', String(orderNumber)],
       ['Tipo', toTitleCase(order.type)],
-      ['Cliente', legacyOrder.client?.clientName || order.clientName || '-'],
       [
         'Endereço',
         `${order.address || ''}, ${order.addressNumber || ''} - ${order.neighborhood || ''}`
@@ -185,7 +185,8 @@ export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfO
       const detailsBody: string[][] = [];
       pdfCacambas.forEach((c: ICacamba, i) => {
         detailsBody.push([`Caçamba ${i + 1}`, '']);
-        detailsBody.push(['Número', c.numero || '-']);
+        const cacambaType = c.tipo === 'retirada' ? 'Retirada' : 'Colocação';
+        detailsBody.push(['Número', `${c.numero || '-'} - ${cacambaType}`]);
         detailsBody.push(['Registrada em', fmt(c.createdAt)]);
         detailsBody.push(['Local', formatLocal(c.local)]);
         detailsBody.push(['Conteúdo', toTitleCase(c.contentType)]);
