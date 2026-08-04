@@ -286,6 +286,32 @@ describe('downloadOrderPdf', () => {
     expect(saveMock).toHaveBeenCalledWith('Cliente_Teste_os_digital_101_cacamba_102.pdf');
   });
 
+  it('exibe CTR ao lado do numero e tipo da cacamba quando informado', async () => {
+    await downloadOrderPdf({
+      ...baseOrder,
+      cacambas: [
+        {
+          _id: 'cac-1',
+          numero: '101',
+          tipo: 'entrega',
+          paymentStatus: 'pendente',
+          local: 'via_publica',
+          contentType: 'Entulho limpo',
+          orderId: 'ord-1',
+          createdAt: '2026-05-16T10:30:00.000Z',
+        },
+      ],
+    }, { ctr: 'CTR-7788' });
+
+    const detailsTable = autoTableMock.mock.calls
+      .map((call) => call[1] as AutoTableOptions)
+      .find((table) => table.head?.[0]?.[0] === 'Detalhes Individuais');
+
+    expect(detailsTable?.body).toEqual(expect.arrayContaining([
+      ['Número', '101 - Colocação - CTR: CTR-7788'],
+    ]));
+  });
+
   it('usa o valor da cacamba no QR Code Pix da nota individual', async () => {
     const individualCacamba: ICacamba = {
       _id: 'cac-1',

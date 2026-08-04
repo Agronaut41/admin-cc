@@ -85,12 +85,46 @@ describe('AdminOrderCard comprovante reutilizado', () => {
     renderCard(order);
 
     fireEvent.click(screen.getByRole('button', { name: 'Baixar Pedido' }));
+    expect(screen.getByRole('dialog', { name: 'Adicionar CTR ao PDF?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Não adicionar CTR' }));
     expect(screen.getByRole('dialog', { name: 'Incluir QR Code de pagamento?' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Incluir QR Code Pix' }));
 
     await waitFor(() =>
       expect(downloadOrderPdf).toHaveBeenCalledWith(order, { includePaymentQrCode: true }),
+    );
+  });
+
+  it('permite adicionar CTR antes de baixar pedido de retirada', async () => {
+    const { downloadOrderPdf } = await import('../../../utils/orderPdf');
+    const order: IOrder = {
+      _id: 'ord-retirada-ctr',
+      orderNumber: 304,
+      clientName: 'Cliente Retirada',
+      contactName: 'Contato',
+      contactNumber: '123',
+      neighborhood: 'Centro',
+      address: 'Rua A',
+      addressNumber: '10',
+      type: 'retirada',
+      priority: 0,
+      status: 'concluido',
+      motorista: { _id: 'drv-1', username: 'Motorista' },
+    };
+
+    renderCard(order);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Baixar Pedido' }));
+    fireEvent.change(screen.getByLabelText('CTR'), { target: { value: 'CTR-7788' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar CTR' }));
+
+    await waitFor(() =>
+      expect(downloadOrderPdf).toHaveBeenCalledWith(order, {
+        includePaymentQrCode: false,
+        ctr: 'CTR-7788',
+      }),
     );
   });
 
@@ -159,6 +193,7 @@ describe('AdminOrderCard comprovante reutilizado', () => {
     renderCard(order);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Baixar nota individual' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Não adicionar CTR' }));
 
     await waitFor(() =>
       expect(downloadOrderPdf).toHaveBeenCalledWith(order, {
@@ -193,6 +228,8 @@ describe('AdminOrderCard comprovante reutilizado', () => {
     renderCard(order);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Baixar nota individual' })[0]);
+    expect(screen.getByRole('dialog', { name: 'Adicionar CTR ao PDF?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Não adicionar CTR' }));
     expect(screen.getByRole('dialog', { name: 'Incluir QR Code de pagamento?' })).toBeInTheDocument();
     expect(screen.getByText(/nota individual da caçamba 101/i)).toBeInTheDocument();
 

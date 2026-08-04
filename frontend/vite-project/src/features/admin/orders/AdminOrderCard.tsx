@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ICacamba, IOrder, OrderType } from '../../../interfaces';
 import CacambaList from '../../../components/CacambaList';
+import { TextInput } from '../../../components/ui';
 import { apiUrl } from '../../../services/api';
 import { formatDriverName } from '../../../utils/formatDriverName';
 import { SHOW_ORDER_DOWNLOAD_BUTTON, typeLabels } from '../admin.constants';
@@ -40,6 +41,11 @@ type AdminOrderCardProps = {
   onDeleteCacamba: (cacamba: ICacamba) => void;
 };
 
+type PendingDownload = {
+  individualCacamba?: ICacamba;
+  ctr?: string;
+};
+
 export const AdminOrderCard = ({
   order,
   onOpenImage,
@@ -50,8 +56,13 @@ export const AdminOrderCard = ({
   onDeleteOrder,
   onDeleteCacamba,
 }: AdminOrderCardProps) => {
+  const [showCtrChoice, setShowCtrChoice] = useState(false);
+  const [pendingDownload, setPendingDownload] = useState<PendingDownload>({});
+  const [ctrInput, setCtrInput] = useState('');
+  const [ctrError, setCtrError] = useState('');
   const [showPaymentQrChoice, setShowPaymentQrChoice] = useState(false);
   const [paymentQrCacamba, setPaymentQrCacamba] = useState<ICacamba | null>(null);
+  const [paymentQrCtr, setPaymentQrCtr] = useState('');
   const [isDownloadingOrderPdf, setIsDownloadingOrderPdf] = useState(false);
   const hasCacambas = (order.cacambas?.length ?? 0) > 0;
   const canDownloadIndividualCacambaPdf =
@@ -72,28 +83,64 @@ export const AdminOrderCard = ({
     (typeof order.motorista === 'object' ? order.motorista?.username : '') ||
       proof?.driverNameSnapshot,
   );
-  const downloadOrder = async (includePaymentQrCode: boolean, individualCacamba?: ICacamba) => {
+  const resetDownloadChoices = () => {
+    setShowCtrChoice(false);
+    setPendingDownload({});
+    setCtrInput('');
+    setCtrError('');
+    setShowPaymentQrChoice(false);
+    setPaymentQrCacamba(null);
+    setPaymentQrCtr('');
+  };
+
+  const downloadOrder = async (includePaymentQrCode: boolean, individualCacamba?: ICacamba, ctr?: string) => {
     try {
       setIsDownloadingOrderPdf(true);
       const { downloadOrderPdf } = await import('../../../utils/orderPdf');
       await downloadOrderPdf(order, {
         includePaymentQrCode,
         ...(individualCacamba ? { individualCacamba } : {}),
+        ...(ctr ? { ctr } : {}),
       });
-      setShowPaymentQrChoice(false);
-      setPaymentQrCacamba(null);
+      resetDownloadChoices();
     } finally {
       setIsDownloadingOrderPdf(false);
     }
   };
 
-  const handleDownloadIndividualCacambaPdf = async (cacamba: ICacamba) => {
+  const continueAfterCtrChoice = async (nextDownload: PendingDownload) => {
     if (order.type === 'entrega') {
-      setPaymentQrCacamba(cacamba);
+      setPaymentQrCacamba(nextDownload.individualCacamba || null);
+      setPaymentQrCtr(nextDownload.ctr || '');
+      setShowCtrChoice(false);
       setShowPaymentQrChoice(true);
       return;
     }
-    await downloadOrder(false, cacamba);
+    await downloadOrder(false, nextDownload.individualCacamba, nextDownload.ctr);
+  };
+
+  const openCtrChoice = (individualCacamba?: ICacamba) => {
+    setPendingDownload(individualCacamba ? { individualCacamba } : {});
+    setCtrInput('');
+    setCtrError('');
+    setShowCtrChoice(true);
+  };
+
+  const skipCtr = () => {
+    void continueAfterCtrChoice(pendingDownload);
+  };
+
+  const confirmCtr = () => {
+    const nextCtr = ctrInput.trim();
+    if (!nextCtr) {
+      setCtrError('Digite a CTR para continuar.');
+      return;
+    }
+    void continueAfterCtrChoice({ ...pendingDownload, ctr: nextCtr });
+  };
+
+  const handleDownloadIndividualCacambaPdf = async (cacamba: ICacamba) => {
+    openCtrChoice(cacamba);
   };
 
   return (
@@ -221,14 +268,7 @@ export const AdminOrderCard = ({
             {SHOW_ORDER_DOWNLOAD_BUTTON && order.status === 'concluido' && (
               <DownloadOrderButton
                 type="button"
-                onClick={async () => {
-                  if (order.type === 'entrega') {
-                    setPaymentQrCacamba(null);
-                    setShowPaymentQrChoice(true);
-                    return;
-                  }
-                  await downloadOrder(false);
-                }}
+                onClick={() => openCtrChoice()}
               >
                 Baixar Pedido
               </DownloadOrderButton>
@@ -236,14 +276,74 @@ export const AdminOrderCard = ({
           </OrderActions>
         </OrderFooter>
       </OrderCardBody>
+      {showCtrChoice && (
+        <div
+          className="fixed inset-0 z-[1300] flex items-center justify-center bg-gray-900/60 p-4"
+          role="presentation"
+          onClick={() => {
+            if (!isDownloadingOrderPdf) resetDownloadChoices();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`ctr-title-${order._id}`}
+            className="w-[min(460px,94vw)] rounded-ui-lg border border-red-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-red-100 px-5 py-4">
+              <h3 id={`ctr-title-${order._id}`} className="m-0 text-[1.05rem] font-black text-gray-950">
+                Adicionar CTR ao PDF?
+              </h3>
+              <p className="mb-0 mt-2 text-[0.88rem] font-semibold leading-5 text-gray-600">
+                Caso informe uma CTR, ela aparecerá ao lado do número e do tipo da caçamba na mesma linha.
+              </p>
+            </div>
+            <div className="grid gap-3 px-5 py-4">
+              <label htmlFor={`ctr-input-${order._id}`} className="text-sm font-black text-gray-700">
+                CTR
+              </label>
+              <TextInput
+                id={`ctr-input-${order._id}`}
+                value={ctrInput}
+                invalid={Boolean(ctrError)}
+                placeholder="Digite a CTR"
+                disabled={isDownloadingOrderPdf}
+                onChange={(event) => {
+                  setCtrInput(event.target.value);
+                  if (ctrError) setCtrError('');
+                }}
+              />
+              {ctrError && <span className="text-[0.78rem] font-bold text-red-700">{ctrError}</span>}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 px-5 py-4">
+              <button
+                type="button"
+                className="min-h-11 cursor-pointer rounded-ui-md border border-gray-300 bg-white px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isDownloadingOrderPdf}
+                onClick={skipCtr}
+              >
+                Não adicionar CTR
+              </button>
+              <button
+                type="button"
+                className="min-h-11 cursor-pointer rounded-ui-md border border-brand bg-brand px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isDownloadingOrderPdf}
+                onClick={confirmCtr}
+              >
+                Adicionar CTR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showPaymentQrChoice && (
         <div
           className="fixed inset-0 z-[1300] flex items-center justify-center bg-gray-900/60 p-4"
           role="presentation"
           onClick={() => {
             if (!isDownloadingOrderPdf) {
-              setShowPaymentQrChoice(false);
-              setPaymentQrCacamba(null);
+              resetDownloadChoices();
             }
           }}
         >
@@ -267,7 +367,7 @@ export const AdminOrderCard = ({
                 type="button"
                 className="min-h-11 cursor-pointer rounded-ui-md border border-gray-300 bg-white px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isDownloadingOrderPdf}
-                onClick={() => downloadOrder(false, paymentQrCacamba || undefined)}
+                onClick={() => downloadOrder(false, paymentQrCacamba || undefined, paymentQrCtr)}
               >
                 Baixar sem QR Code
               </button>
@@ -275,7 +375,7 @@ export const AdminOrderCard = ({
                 type="button"
                 className="min-h-11 cursor-pointer rounded-ui-md border border-brand bg-brand px-4 py-2 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isDownloadingOrderPdf}
-                onClick={() => downloadOrder(true, paymentQrCacamba || undefined)}
+                onClick={() => downloadOrder(true, paymentQrCacamba || undefined, paymentQrCtr)}
               >
                 {isDownloadingOrderPdf ? 'Gerando...' : 'Incluir QR Code Pix'}
               </button>

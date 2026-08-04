@@ -8,6 +8,7 @@ type AutoTableFn = (doc: JsPdfDocument, options: Record<string, unknown>) => voi
 type DownloadOrderPdfOptions = {
   includePaymentQrCode?: boolean;
   individualCacamba?: ICacamba;
+  ctr?: string;
 };
 type OrderWithLegacyFields = IOrder & {
   numeroPedido?: number | string;
@@ -137,6 +138,7 @@ const getOrderPaymentAmount = (order: IOrder, individualCacamba?: ICacamba) => {
 
 export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfOptions = {}) {
   const { individualCacamba } = options;
+  const ctr = String(options.ctr || '').trim();
   const { jsPDF } = await import('jspdf');
   const autoTableModule = await import('jspdf-autotable');
   const autoTable = ('default' in autoTableModule ? autoTableModule.default : autoTableModule) as AutoTableFn;
@@ -186,7 +188,8 @@ export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfO
       pdfCacambas.forEach((c: ICacamba, i) => {
         detailsBody.push([`Caçamba ${i + 1}`, '']);
         const cacambaType = c.tipo === 'retirada' ? 'Retirada' : 'Colocação';
-        detailsBody.push(['Número', `${c.numero || '-'} - ${cacambaType}`]);
+        const numberLabel = [c.numero || '-', cacambaType, ctr ? `CTR: ${ctr}` : ''].filter(Boolean).join(' - ');
+        detailsBody.push(['Número', numberLabel]);
         detailsBody.push(['Registrada em', fmt(c.createdAt)]);
         detailsBody.push(['Local', formatLocal(c.local)]);
         detailsBody.push(['Conteúdo', toTitleCase(c.contentType)]);
