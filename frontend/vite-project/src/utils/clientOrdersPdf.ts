@@ -60,6 +60,22 @@ const formatCpfCnpj = (value?: string) => {
   return String(value || '').trim();
 };
 
+const formatContactPhone = (value?: string) => {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+  const localDigits = digits.startsWith('55') && (digits.length === 12 || digits.length === 13)
+    ? digits.slice(2)
+    : digits;
+
+  if (localDigits.length === 11) {
+    return localDigits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  if (localDigits.length === 10) {
+    return localDigits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  return rawValue || '-';
+};
+
 const formatClientNameWithDocument = (client: IClient) => {
   const clientName = String(client.clientName || '').trim() || '-';
   const cnpjCpf = formatCpfCnpj(client.cnpjCpf);
@@ -265,6 +281,7 @@ export async function buildClientOrdersPdf(
   const summaryBody = [
     ['Cliente', formatClientNameWithDocument(client)],
     ['Endereco', formatClientAddress(client)],
+    ['Telefone de contato', formatContactPhone(client.contactNumber)],
     ...(periodText ? [['Periodo', periodText]] : []),
     ['Total do cliente', formatCurrency(clientTotal)],
     ['Pedidos no relatorio', String(orders.length)],

@@ -134,6 +134,7 @@ describe('buildClientOrdersPdf', () => {
           _id: 'cli-1',
           clientName: 'Cliente Teste',
           cnpjCpf: '12345678000190',
+          contactNumber: '12981956675',
           address: 'Rua Central',
           addressNumber: '123',
           neighborhood: 'Centro',
@@ -161,6 +162,7 @@ describe('buildClientOrdersPdf', () => {
       'Endereco',
       'Rua Central, 123 - Centro - Sao Jose dos Campos - CEP 12200-000',
     ]);
+    expect(summary.body).toContainEqual(['Telefone de contato', '(12) 98195-6675']);
     expect(summary.headStyles?.fillColor).toEqual([227, 6, 19]);
     expect(details.headStyles?.fillColor).toEqual([227, 6, 19]);
     expect(details.tableWidth).toBe(277);
@@ -304,6 +306,7 @@ describe('buildClientOrdersPdf', () => {
     if (!summary) throw new Error('Summary table was not rendered.');
     expect(summary.body?.some((row) => row[0] === 'Periodo')).toBe(false);
     expect(summary.body).toContainEqual(['Endereco', '-']);
+    expect(summary.body).toContainEqual(['Telefone de contato', '-']);
   });
 
   it('desenha o cabecalho uma unica vez em cada pagina do PDF', async () => {

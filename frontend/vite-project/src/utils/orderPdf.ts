@@ -70,6 +70,22 @@ const getDriverDisplayName = (driver: IOrder['motorista']) => {
   return formatDriverName(driver.username);
 };
 
+const formatContactPhone = (value?: string) => {
+  const rawValue = String(value || '').trim();
+  const digits = rawValue.replace(/\D/g, '');
+  const localDigits = digits.startsWith('55') && (digits.length === 12 || digits.length === 13)
+    ? digits.slice(2)
+    : digits;
+
+  if (localDigits.length === 11) {
+    return localDigits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+  if (localDigits.length === 10) {
+    return localDigits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+  return rawValue || '-';
+};
+
 const formatFileNamePart = (value?: string | number) =>
   String(value || '')
     .normalize('NFD')
@@ -157,6 +173,7 @@ export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfO
   autoTable(doc, {
     body: [
       ['Cliente', legacyOrder.client?.clientName || order.clientName || '-'],
+      ['Telefone de contato', formatContactPhone(order.contactNumber)],
       ['Número do Pedido', String(orderNumber)],
       ['Tipo', toTitleCase(order.type)],
       [

@@ -125,6 +125,7 @@ describe('downloadOrderPdf', () => {
     expect(table?.head).toBeUndefined();
     expect(table?.body).toEqual([
       ['Cliente', 'Cliente Teste'],
+      ['Telefone de contato', '(12) 99999-0000'],
       ['Número do Pedido', '101'],
       ['Tipo', 'Entrega'],
       ['Endereço', 'Rua A, 10 - Centro'],
@@ -134,11 +135,21 @@ describe('downloadOrderPdf', () => {
     const tableText = JSON.stringify(table?.body);
     expect(tableText).not.toContain('Campo');
     expect(tableText).not.toContain('Status');
-    expect(tableText).not.toContain('Contato');
     expect(tableText).not.toContain('Criado em');
     expect(tableText).not.toContain('Valor');
     expect(tableText).not.toContain('R$');
     expect(saveMock).toHaveBeenCalledWith('Cliente_Teste_os_digital_101.pdf');
+  });
+
+  it('formata telefone de contato com DDI brasileiro na tabela principal', async () => {
+    await downloadOrderPdf({
+      ...baseOrder,
+      contactNumber: '+55 12 98195-6675',
+    });
+
+    expect(firstTable()?.body).toEqual(expect.arrayContaining([
+      ['Telefone de contato', '(12) 98195-6675'],
+    ]));
   });
 
   it('salva o arquivo com nome do cliente e numero da OS digital', async () => {
