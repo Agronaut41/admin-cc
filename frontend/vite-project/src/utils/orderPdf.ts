@@ -86,6 +86,12 @@ const formatContactPhone = (value?: string) => {
   return rawValue || '-';
 };
 
+const formatContact = (name?: string, phone?: string) => {
+  const contactName = String(name || '').trim();
+  const contactPhone = formatContactPhone(phone);
+  return contactName ? `${contactName} - ${contactPhone}` : contactPhone;
+};
+
 const formatFileNamePart = (value?: string | number) =>
   String(value || '')
     .normalize('NFD')
@@ -173,7 +179,7 @@ export async function downloadOrderPdf(order: IOrder, options: DownloadOrderPdfO
   autoTable(doc, {
     body: [
       ['Cliente', legacyOrder.client?.clientName || order.clientName || '-'],
-      ['Telefone de contato', formatContactPhone(order.contactNumber)],
+      ['Telefone de contato', formatContact(order.contactName, order.contactNumber)],
       ['Número do Pedido', String(orderNumber)],
       ['Tipo', toTitleCase(order.type)],
       [

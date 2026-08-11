@@ -125,7 +125,7 @@ describe('downloadOrderPdf', () => {
     expect(table?.head).toBeUndefined();
     expect(table?.body).toEqual([
       ['Cliente', 'Cliente Teste'],
-      ['Telefone de contato', '(12) 99999-0000'],
+      ['Telefone de contato', 'Responsável - (12) 99999-0000'],
       ['Número do Pedido', '101'],
       ['Tipo', 'Entrega'],
       ['Endereço', 'Rua A, 10 - Centro'],
@@ -148,7 +148,18 @@ describe('downloadOrderPdf', () => {
     });
 
     expect(firstTable()?.body).toEqual(expect.arrayContaining([
-      ['Telefone de contato', '(12) 98195-6675'],
+      ['Telefone de contato', 'Responsável - (12) 98195-6675'],
+    ]));
+  });
+
+  it('mantem apenas o telefone quando o nome do contato nao foi informado', async () => {
+    await downloadOrderPdf({
+      ...baseOrder,
+      contactName: '',
+    });
+
+    expect(firstTable()?.body).toEqual(expect.arrayContaining([
+      ['Telefone de contato', '(12) 99999-0000'],
     ]));
   });
 
