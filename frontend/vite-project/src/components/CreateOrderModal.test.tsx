@@ -61,6 +61,18 @@ describe('CreateOrderModal', () => {
             headers: { 'Content-Type': 'application/json' },
           });
         }
+        if (url.includes('/cities')) {
+          return new Response(
+            JSON.stringify([
+              { _id: 'city-1', name: 'São José dos Campos' },
+              { _id: 'city-2', name: 'Cidade Nova' },
+            ]),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          );
+        }
         if (url.includes('/orders')) {
           return new Response(JSON.stringify({ _id: 'order-1', ...(init?.body ? JSON.parse(String(init.body)) : {}) }), {
             status: 201,
@@ -134,5 +146,17 @@ describe('CreateOrderModal', () => {
         cacambaPrice: 250,
       }),
     );
+  });
+
+  it('carrega cidades dinamicas no campo de cidade', async () => {
+    render(<CreateOrderModal onClose={vi.fn()} onOrderCreated={vi.fn()} drivers={drivers} />);
+
+    fireEvent.change(await screen.findByLabelText('Digite nome, CPF ou CNPJ...'), {
+      target: { value: client._id },
+    });
+
+    const selects = screen.getAllByRole('combobox');
+    expect(selects[2]).toHaveDisplayValue('São José dos Campos');
+    expect(screen.getByRole('option', { name: 'Cidade Nova' })).toBeInTheDocument();
   });
 });

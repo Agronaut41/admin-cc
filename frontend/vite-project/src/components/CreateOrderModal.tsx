@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { IDriver, IClient, OrderType } from '../interfaces';
+import type { ICity, IDriver, IClient, OrderType } from '../interfaces';
 import type {
   FilterOptionOption,
   Props as ReactSelectProps,
@@ -179,7 +179,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
   const isPresetWithdrawal = initialPreset?.mode === 'withdrawal';
   const [SelectComponent, setSelectComponent] = useState<SelectComponentType | null>(null);
   const [clients, setClients] = useState<IClient[]>([]);
+  const [cities, setCities] = useState<ICity[]>([]);
   const [isClientListLoaded, setIsClientListLoaded] = useState(false);
+  const [isCityListLoaded, setIsCityListLoaded] = useState(false);
   const [isClientSelectReady, setIsClientSelectReady] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>(initialPreset?.clientId || '');
   const [form, setForm] = useState<CreateOrderForm>(() =>
@@ -190,7 +192,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
   const fallbackClientSelectRef = useRef<HTMLSelectElement>(null);
   const lastCepRef = useRef<string>('');
   const apiUrl = import.meta.env.VITE_API_URL;
-  const isInitialContentReady = isPresetWithdrawal || (isClientListLoaded && isClientSelectReady);
+  const isInitialContentReady = isPresetWithdrawal || (isClientListLoaded && isCityListLoaded && isClientSelectReady);
 
   useEffect(() => {
     let mounted = true;
@@ -244,6 +246,35 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
     };
   }, [apiUrl]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchCities = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${apiUrl}/cities`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (mounted) setCities(Array.isArray(data) ? data : []);
+        } else if (mounted) {
+          setCities([]);
+        }
+      } catch {
+        if (mounted) setCities([]);
+      } finally {
+        if (mounted) setIsCityListLoaded(true);
+      }
+    };
+
+    void fetchCities();
+    return () => {
+      mounted = false;
+    };
+  }, [apiUrl]);
+
   const clientOptions = useMemo<ClientOption[]>(
     () =>
       clients.map(c => ({
@@ -257,6 +288,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
   const selectedClientOption = useMemo(
     () => clientOptions.find(o => o.value === selectedClientId) || null,
     [clientOptions, selectedClientId]
+  );
+  const cityOptions = useMemo(
+    () => cities.map((city) => city.name.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [cities],
   );
 
   const mapAddress = useMemo(
@@ -675,11 +710,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ onClose, onOrderCre
                         required
                       >
                         <option value="">Selecione...</option>
-                        <option value="São José dos Campos">São José dos Campos</option>
-                        <option value="Jacareí">Jacareí</option>
-                        <option value="Caçapava">Caçapava</option>
-                        <option value="Jambeiro">Jambeiro</option>
-                        <option value="Monteiro Lobato">Monteiro Lobato</option>
+                        {cityOptions.map((city) => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
                       </Select>
                     </Field>
 
