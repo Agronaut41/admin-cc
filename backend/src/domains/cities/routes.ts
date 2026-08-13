@@ -22,8 +22,14 @@ citiesRouter.post('/cities', authenticateToken, isAdmin, async (req, res) => {
     }
 
     const normalizedName = normalizeCityName(rawName);
-    const duplicate = await CityModel.findOne({ normalizedName }).select('_id');
+    const duplicate = await CityModel.findOne({ normalizedName });
     if (duplicate) {
+      if (!duplicate.active) {
+        duplicate.name = rawName;
+        duplicate.active = true;
+        await duplicate.save();
+        return res.status(200).json(duplicate);
+      }
       return res.status(409).json({ message: 'Cidade já cadastrada.' });
     }
 

@@ -2321,11 +2321,18 @@ describe('Admin APIs', () => {
       .set('Authorization', `Bearer ${adminToken}`);
     expect(deleted.status).toBe(200);
 
+    const reactivated = await request(app)
+      .post('/cities')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Cidade de Teste' });
+    expect(reactivated.status).toBe(200);
+    expect(reactivated.body.active).toBe(true);
+
     const listedAfterDelete = await request(app)
       .get('/cities')
       .set('Authorization', `Bearer ${adminToken}`);
     expect(listedAfterDelete.status).toBe(200);
-    expect(listedAfterDelete.body.some((city: any) => city.name === 'Cidade de Teste')).toBe(false);
+    expect(listedAfterDelete.body.some((city: any) => city.name === 'Cidade de Teste')).toBe(true);
   });
 
   it('GET /billing/summary agrega faturamento, respeita filtros e compara com período anterior', async () => {
